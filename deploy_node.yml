@@ -1,0 +1,25 @@
+---
+
+- block:
+
+  # Ansible hosts can serve as an abstraction for tosca nodes
+  # as they encapsulate variables.
+  - name: Add node host
+    add_host:
+      name: "{{ item.uid }}"
+
+  - name: Deploy node
+    include_role:
+      name: "{{ item.role }}"
+    vars:
+      uid: "{{ item.uid }}"
+      config: "{{ item.config }}"
+
+  # Here node status can be reported to Michman.
+  - name: Return status to michman
+    debug:
+      msg: "OK"
+
+  # This line is needed to run the block on a particular
+  # host (or group).
+  delegate_to: "{{ item.host }}"

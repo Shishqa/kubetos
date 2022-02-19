@@ -1,0 +1,7 @@
+---
+
+- name: Launch apiserver
+  debug:
+    msg: >
+      Launching apiserver on {{ inventory_hostname }}
+      connecting to db {{ hostvars[config.db_uid].endpoint }}

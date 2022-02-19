@@ -1,0 +1,22 @@
+---
+
+michman_deploy:
+
+  - uid: id1
+    host: localhost
+    role: compute
+    config:
+      os: ubuntu
+
+  - uid: id2
+    host: id1
+    role: database
+    config:
+      admin_username: admin
+      admin_password: password
+
+  - uid: id3
+    host: id1
+    role: apiserver
+    config:
+      db_uid: id2
