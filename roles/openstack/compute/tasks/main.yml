@@ -1,0 +1,56 @@
+---
+
+- name: Create instance
+  os_server:
+    state: present
+    name: "{{ config.name }}"
+    image: "{{ config.image }}"
+    flavor: "{{ config.flavor }}"
+    key_name: "{{ config.key_name }}"
+    network: "{{ config.virtual_network }}"
+    boot_from_volume: False
+    security_groups: "{{ hostvars[config.security_group].config.name }}"
+    auto_ip: False
+  register: server
+
+- name: Acquire floating IPs for master instance
+  os_floating_ip:
+    state: present
+    reuse: yes
+    server: "{{ config.name }}"
+    network: "{{ config.floating_ip_pool }}"
+    wait: no
+    timeout: 60
+
+- name: Register openstack facts
+  os_server_info:
+    filters:
+      name: "{{ config.name }}"
+  register: result
+
+- name: aaa
+  set_fact:
+    os_info: "{{ result.openstack_servers[0] }}"
+
+- name: Export host to ansible
+  set_fact:
+    ansible_host: >-
+      {%- if os_info.public_v4 != '' -%}
+      {{ os_info.public_v4 }}
+      {%- else -%}
+      {{ os_info.private_v4 }}
+      {%- endif -%}
+    ansible_ssh_host: >-
+      {%- if os_info.interface_ip != '' -%}
+      {{ os_info.interface_ip }}
+      {%- else -%}
+      {{ os_info.private_v4 }}
+      {%- endif -%}
+    ansible_user: "ubuntu"
+    openstack: "{{ os_info }}"
+  delegate_to: "{{ uid }}"
+  delegate_facts: true
+
+- name: Wait for connection
+  wait_for_connection:
+  delegate_to: "{{ uid }}"
