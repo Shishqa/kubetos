@@ -6,14 +6,18 @@
   # as they encapsulate variables.
   - name: Add node host
     add_host:
-      name: "{{ item.uid }}"
+      name: "{{ deployment_unit.uid }}"
+
+  - name: Gather facts
+    gather_facts:
 
   - name: Deploy node
     include_role:
-      name: "{{ item.role }}"
+      name: "{{ deployment_unit.role }}"
     vars:
-      uid: "{{ item.uid }}"
-      config: "{{ item.config }}"
+      uid: "{{ deployment_unit.uid }}"
+      config: "{{ deployment_unit.config }}"
+      ansible_become: "{{ deployment_unit.become | default(false) }}"
 
   # Here node status can be reported to Michman.
   - name: Return status to michman
@@ -22,4 +26,4 @@
 
   # This line is needed to run the block on a particular
   # host (or group).
-  delegate_to: "{{ item.host }}"
+  delegate_to: "{{ deployment_unit.host }}"

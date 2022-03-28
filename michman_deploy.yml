@@ -2,21 +2,36 @@
 
 michman_deploy:
 
-  - uid: id1
+  - uid: security_group
+    role: openstack/security_group
     host: localhost
-    role: compute
     config:
-      os: ubuntu
+      name: shishqa-test-sg
+      description: test security group for shishqa
 
-  - uid: id2
-    host: id1
-    role: database
+  - uid: compute
+    role: openstack/compute
+    host: localhost
     config:
-      admin_username: admin
-      admin_password: password
+      name: shishqa-test-compute
+      flavor: Standard1.small.s50
+      image: bc350bda-eade-4640-8382-5c0e63b0cf60
+      key_name: shishqa
+      virtual_network: net-for-intra-sandbox
+      floating_ip_pool: ispras
+      security_group: security_group
 
-  - uid: id3
-    host: id1
-    role: apiserver
+  - uid: cri-o
+    role: container-engine/cri-o
+    host: compute
+    become: true
     config:
-      db_uid: id2
+      version: 1.19
+
+  - uid: crictl
+    role: container-engine/crictl
+    host: compute
+    become: true
+    config:
+      version: v1.19.0
+      cri: cri-o
