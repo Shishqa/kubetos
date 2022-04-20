@@ -1,0 +1,133 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+capability_types:
+
+  kubetos.capabilities.OCI.Runtime:
+    derived_from: tosca.capabilities.Node
+    properties:
+      name:
+        type: string
+      path:
+        type: string
+
+  kubetos.capabilities.CRI:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      protocol:
+        type: string
+        default: rpc
+        constraints:
+          - equal: rpc
+
+relationship_types:
+
+  kubetos.relationships.OCI.Plugin.CRI-O:
+    derived_from: tosca.relationships.DependsOn
+    interfaces:
+      Configure:
+        type: tosca.interfaces.relationship.Configure
+        operations:
+          pre_configure_source:
+            inputs:
+              list: { value: { get_attribute: [ SOURCE, runtimes ] }, type: list }
+              new_item:
+                value:
+                  name: { get_property: [ TARGET, oci, name ] }
+                  path: { get_property: [ TARGET, oci, path ] }
+                type: map
+            outputs:
+              new_list: [ SOURCE, runtimes ]
+            implementation:
+              primary: ../../add-to-list.yaml
+
+node_types:
+
+  kubetos.nodes.Kata:
+    derived_from: tosca.nodes.SoftwareComponent
+    capabilities:
+      oci:
+        type: kubetos.capabilities.OCI.Runtime
+        properties:
+          name:
+            type: string
+            default: kata
+          path:
+            type: string
+            default: /usr/bin/kata-runtime
+    properties:
+      version:
+        type: string
+        default: "2.1.0"
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          version: { value: { get_property: [ SELF, version ] }, type: string }
+          ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
+        operations:
+          create:
+            implementation:
+              primary: ./ansible/kata--create.yaml
+              dependencies:
+                - ../../roles
+          configure:
+            implementation:
+              primary: ./ansible/kata--configure.yaml
+              dependencies:
+                - ../../roles
+
+  kubetos.nodes.CRI-O:
+    derived_from: tosca.nodes.SoftwareComponent
+    capabilities:
+      cri: kubetos.capabilities.CRI
+    properties:
+      version:
+        type: string
+        default: "1.21"
+    attributes:
+      runtimes:
+        type: list
+        default: []
+    requirements:
+      - oci_runtime:
+          capability: kubetos.capabilities.OCI.Runtime
+          relationship: kubetos.relationships.OCI.Plugin.CRI-O
+          occurrences: [ 0, UNBOUNDED ]
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          crio_version: { value: { get_property: [ SELF, version ] }, type: string }
+          ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
+        operations:
+          configure:
+            inputs:
+              crio_runtimes: { value: { get_attribute: [ SELF, runtimes ] }, type: list }
+            implementation:
+              primary: ./ansible/cri-o--configure.yaml
+              dependencies:
+                - ../../roles
+
+  kubetos.nodes.Crictl:
+    derived_from: tosca.nodes.SoftwareComponent
+    properties:
+      version:
+        type: string
+        default: "1.21"
+    requirements:
+      - cri_runtime:
+          capability: kubetos.capabilities.CRI
+          relationship: tosca.relationships.ConnectsTo
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          create:
+            inputs:
+              crictl_version: { value: { get_property: [ SELF, version ] }, type: string }
+              cri_socket: { value: { get_property: [ SELF, cri_runtime, cri_socket ] }, type: string }
+              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
+            implementation:
+              primary: ./ansible/crictl--create.yaml
+              dependencies:
+                - ../../roles

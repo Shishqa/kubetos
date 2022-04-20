@@ -1,0 +1,12 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_ssh_user: ubuntu
+    ansible_ssh_private_key_file: "{{ ssh_key }}"
+    ansible_become: yes
+  tasks:
+
+    - name: Create Crictl
+      include_role:
+        name: container-engine/crictl

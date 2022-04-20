@@ -1,0 +1,38 @@
+---
+
+_host_architecture_groups:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+host_architecture: >-
+  {%- if ansible_architecture in _host_architecture_groups -%}
+  {{ _host_architecture_groups[ansible_architecture] }}
+  {%- else -%}
+  {{ ansible_architecture }}
+  {%- endif -%}
+
+
+kata_containers_version: 2.1.0
+
+kata_containers_download_url: "https://github.com/kata-containers/kata-containers/releases/download/{{ kata_containers_version }}/kata-static-{{ kata_containers_version }}-{{ ansible_architecture }}.tar.xz"
+
+kata_containers_binary_checksums:
+  arm:
+    2.0.4: 0
+    2.1.0: 0
+  amd64:
+    2.0.4: 022a60c2d92a5ab9a5eb83d5a95154a2d06fdc2206b2a473d902ccc86766371a
+    2.1.0: c954cdd723bad4ee20e57f107fe1064f0a00f4c349c1826b7a0f89d02f94dec0
+  arm64:
+    2.0.4: 0
+    2.1.0: 0
+
+kata_containers_binary_checksum: "{{ kata_containers_binary_checksums[host_architecture][kata_containers_version] }}"
+
+kata_containers_dir: /opt/kata
+kata_containers_config_dir: /etc/kata-containers
+
+kata_containers_qemu_default_memory: "{{ ansible_memtotal_mb }}"
+kata_containers_qemu_debug: 'false'
+kata_containers_qemu_sandbox_cgroup_only: 'true'
+kata_containers_qemu_enable_mem_prealloc: 'false'

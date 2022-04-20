@@ -291,9 +291,7 @@ pinns_path = ""
 {% for runtime in crio_runtimes %}
 [crio.runtime.runtimes.{{ runtime.name }}]
 runtime_path = "{{ runtime.path }}"
-runtime_type = "{{ runtime.type }}"
-runtime_root = "{{ runtime.root }}"
-privileged_without_host_devices = {{ runtime.privileged_without_host_devices|default(false)|lower }}
+runtime_type = "oci"
 {% endfor %}
 
 # Kata Containers with the Firecracker VMM

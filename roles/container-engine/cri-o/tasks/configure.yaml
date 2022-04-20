@@ -11,10 +11,6 @@
   set_fact:
     is_ostree: "{{ ostree.stat.exists }}"
 
-- name: DEBUG
-  debug:
-    msg: "{{ ansible_distribution|lower }}"
-
 - name: gather os specific variables
   include_vars: "{{ item }}"
   with_first_found:
@@ -218,9 +214,3 @@
   changed_when: false
   retries: 5
   delay: "{{ retry_stagger | random + 3 }}"
-
-- name: Export config
-  set_fact:
-    socket: /var/run/crio/crio.sock
-  delegate_to: "{{ uid }}"
-  delegate_facts: true
