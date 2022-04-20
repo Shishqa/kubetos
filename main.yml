@@ -1,9 +1,0 @@
----
-
-- hosts: localhost
-  tasks:
-  - name: Deploy node
-    include_tasks: deploy_node.yml
-    loop: "{{ michman_deploy }}"
-    loop_control:
-      loop_var: deployment_unit
