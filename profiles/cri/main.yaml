@@ -9,6 +9,8 @@ capability_types:
         type: string
       path:
         type: string
+      root:
+        type: string
 
   kubetos.capabilities.CRI:
     derived_from: tosca.capabilities.Endpoint
@@ -34,6 +36,7 @@ relationship_types:
                 value:
                   name: { get_property: [ TARGET, oci, name ] }
                   path: { get_property: [ TARGET, oci, path ] }
+                  root: { get_property: [ TARGET, oci, root ] }
                 type: map
             outputs:
               new_list: [ SOURCE, runtimes ]
@@ -64,15 +67,7 @@ node_types:
   kubetos.nodes.Kata:
     derived_from: tosca.nodes.SoftwareComponent
     capabilities:
-      oci:
-        type: kubetos.capabilities.OCI.Runtime
-        properties:
-          name:
-            type: string
-            default: kata
-          path:
-            type: string
-            default: /usr/bin/kata-runtime
+      oci: kubetos.capabilities.OCI.Runtime
     properties:
       version:
         type: string
@@ -144,7 +139,7 @@ node_types:
           create:
             inputs:
               crictl_version: { value: { get_property: [ SELF, version ] }, type: string }
-              cri_socket: { value: { get_property: [ SELF, cri_runtime, cri_socket ] }, type: string }
+              cri_socket: { value: { get_property: [ SELF, cri_runtime, cri, url_path ] }, type: string }
               ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
             implementation:
               primary: ./ansible/crictl--create.yaml

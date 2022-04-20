@@ -48,18 +48,6 @@
   import_tasks: "crio_repo.yml"
   when: crio_add_repos
 
-- name: Build a list of crio runtimes with Katacontainers runtimes
-  set_fact:
-    crio_runtimes: "{{ crio_runtimes + kata_runtimes  }}"
-  when:
-    - False
-
-- name: Build a list of crio runtimes with crun runtime
-  set_fact:
-    crio_runtimes: "{{ crio_runtimes + [crun_runtime] }}"
-  when:
-    - False
-
 - name: Make sure needed folders exist in the system
   with_items:
     - /etc/crio
@@ -109,6 +97,13 @@
   until: package_install is succeeded
   retries: 4
   delay: "{{ retry_stagger | d(3) }}"
+
+- name: Remove example OCI configs
+  file:
+    path: "/etc/crio/crio.conf.d/{{ item }}"
+    state: absent
+  loop:
+    - 01-crio-runc.conf
 
 - name: Check if already installed
   stat:

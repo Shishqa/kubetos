@@ -62,7 +62,45 @@ topology_template:
           properties:
             name: runc
             path: /usr/sbin/runc
+            root: /run/runc
       requirements:
         - host: compute
       artifacts:
         ssh_key: id_rsa
+
+    kata:
+      type: kubetos.nodes.Kata
+      capabilities:
+        oci:
+          properties:
+            name: kata
+            path: /opt/kata/bin/kata-runtime
+            root: /run/kata-containers
+      requirements:
+        - host: compute
+      artifacts:
+        ssh_key: id_rsa
+
+    crio:
+      type: kubetos.nodes.CRI-O
+      capabilities:
+        cri:
+          properties:
+            url_path: /var/run/crio/crio.sock
+      requirements:
+        - host: compute
+        - oci_runtime: runc
+        - oci_runtime: kata
+      artifacts:
+        ssh_key: id_rsa
+
+    crictl:
+      type: kubetos.nodes.Crictl
+      properties:
+        version: { concat: [ 'v', { get_property: [ SELF, cri_runtime, version ] }, '.0' ] }
+      requirements:
+        - host: compute
+        - cri_runtime: crio
+      artifacts:
+        ssh_key: id_rsa
+
