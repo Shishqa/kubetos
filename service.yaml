@@ -7,6 +7,7 @@ metadata:
 
 imports:
   - profiles/openstack/main.yaml
+  - profiles/cri/main.yaml
 
 topology_template:
   node_templates:
@@ -51,5 +52,17 @@ topology_template:
         key_name: shishqa
       requirements:
         - security_group: sg
+      artifacts:
+        ssh_key: id_rsa
+
+    runc:
+      type: kubetos.nodes.Runc
+      capabilities:
+        oci:
+          properties:
+            name: runc
+            path: /usr/sbin/runc
+      requirements:
+        - host: compute
       artifacts:
         ssh_key: id_rsa
