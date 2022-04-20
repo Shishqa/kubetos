@@ -76,7 +76,7 @@ node_types:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
-          version: { value: { get_property: [ SELF, version ] }, type: string }
+          kata_containers_version: { value: { get_property: [ SELF, version ] }, type: string }
           ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
         operations:
           create:
