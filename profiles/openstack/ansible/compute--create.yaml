@@ -1,0 +1,39 @@
+---
+- hosts: all
+  gather_facts: no
+  tasks:
+
+    - name: Create instance
+      os_server:
+        state: present
+        name: "{{ vm_name }}"
+        image: "{{ image }}"
+        flavor: "{{ flavor }}"
+        key_name: "{{ key_name }}"
+        network: "{{ network }}"
+        boot_from_volume: false
+        security_groups: "{{ security_groups }}"
+        auto_ip: false
+      register: server_info
+
+    - name: Acquire floating IPs for instance
+      os_floating_ip:
+        state: present
+        reuse: yes
+        server: "{{ server_info.server.id }}"
+        network: "{{ floating_ip_pool }}"
+        wait: yes
+      when: server_info.server.public_v4 == ''
+
+    - name: Retrieve openstack facts
+      os_server_info:
+        filters:
+          id: "{{ server_info.server.id }}"
+      register: server_facts
+
+    - name: Set attributes
+      set_stats:
+        data:
+          private_address: "{{ server_facts.openstack_servers[0].private_v4 }}"
+          public_address: "{{ server_facts.openstack_servers[0].public_v4 }}"
+          id: "{{ server_facts.openstack_servers[0].id }}"

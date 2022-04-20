@@ -1,0 +1,9 @@
+---
+- hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Append this relationship's target security group name
+      set_stats:
+        data:
+          new_security_groups: "{{ security_groups + [ security_group ] }}"

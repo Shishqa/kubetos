@@ -1,0 +1,17 @@
+---
+- hosts: all
+  gather_facts: no
+  tasks:
+
+    - name: Create security group rule
+      os_security_group_rule:
+        state: present
+        security_group: "{{ security_group }}"
+        protocol: "{{ protocol }}"
+        remote_ip_prefix: "{{ remote_ip_prefix }}"
+      register: sg_rule_info
+
+    - name: Set attributes
+      set_stats:
+        data:
+          id: "{{ sg_rule_info.id }}"
