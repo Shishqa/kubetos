@@ -1,0 +1,126 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+
+capability_types:
+
+  kubetos.capabilities.Etcd.Endpoint.Peer:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      port:
+        type: integer
+        default: 2380
+        required: false
+
+  kubetos.capabilities.Etcd.Endpoint.Access:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      port:
+        type: integer
+        default: 2379
+        required: false
+      api_version:
+        type: string
+        default: v2
+        constraints:
+          - valid_values: [ v1, v2 ]
+
+node_types:
+
+  kubetos.nodes.Etcd.Cluster:
+    derived_from: tosca.nodes.Root
+    requirements:
+      - peer:
+          capability: kubetos.capabilities.Etcd.Endpoint.Peer
+          occurrences: [ 1, UNBOUNDED ]
+
+
+  kubetos.nodes.Etcd:
+    derived_from: tosca.nodes.SoftwareComponent
+    capabilities:
+      access_address:
+        type: kubetos.capabilities.Etcd.Endpoint.Access
+      peer_address:
+        type: kubetos.capabilities.Etcd.Endpoint.Peer
+    properties:
+      name:
+        type: string
+        default: etcd
+        required: false
+      version:
+        type: string
+        default: v3.4.13
+        required: false
+      backup_retention_count:
+        type: integer
+        default: -1
+        required: false
+      heartbeat_interval:
+        type: scalar-unit.time
+        default: 250 ms
+        required: false
+      election_timeout:
+        type: scalar-unit.time
+        default: 5000 ms
+        required: false
+      snapshot_count:
+        type: integer
+        default: 10000
+        required: false
+      quota_backend_bytes:
+        type: scalar-unit.size
+        default: 2147483648 B
+        required: false
+      max_snapshots:
+        type: integer
+        default: 0
+        required: false
+      max_wals:
+        type: integer
+        default: 0
+        required: false
+#    attributes:
+#      access_addresses:
+#        type: list
+#        default: []
+#      peer_addresses:
+#        type: list
+#        default: []
+#    requirements:
+#      - peer:
+#          capability: tosca.capabilities.Endpoint
+#          node: etcd.nodes.Etcd
+#          relationship: etcd.relationships.ConnectsToEtcdCluster
+#          occurrences: [ 0, UNBOUNDED ]
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          create:
+            inputs:
+              etcd_version: { value: { get_property: [ SELF, version ] }, type: string }
+              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
+            implementation:
+              primary: ../ansible/etcd--create.yaml
+              dependencies:
+                - ../../../roles
+          configure:
+            inputs:
+              etcd_version: { value: { get_property: [ SELF, version ] }, type: string }
+              etcd_address: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
+              etcd_peer_port: { value: { get_property: [ SELF, peer_address, port ] }, type: integer }
+              etcd_access_address: { value: { get_attribute: [ SELF, host, public_address ] }, type: string }
+              etcd_access_port: { value: { get_property: [ SELF, access_address, port ] }, type: integer }
+              etcd_member_name: { value: { get_property: [ SELF, name ] }, type: string }
+              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
+            implementation:
+              primary: ../ansible/etcd--configure.yaml
+              dependencies:
+                - ../../../roles
+          start:
+            inputs:
+              etcd_version: { value: { get_property: [ SELF, version ] }, type: string }
+              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
+            implementation:
+              primary: ../ansible/etcd--start.yaml
+              dependencies:
+                - ../../../roles
