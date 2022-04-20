@@ -1,0 +1,57 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+capability_types:
+
+  kubetos.capabilities.StaticPodHost:
+    derived_from: tosca.capabilities.Container
+
+relationship_types:
+
+  kubetos.relationships.ConnectsToAPIServer:
+    derived_from: tosca.relationships.ConnectsTo
+
+node_types:
+
+  kubetos.nodes.Kubelet:
+    derived_from: tosca.nodes.SoftwareComponent
+    capabilities:
+      static_pod_host:
+        type: kubetos.capabilities.StaticPodHost
+    properties:
+      version:
+        type: string
+        default: v1.19.1
+    requirements:
+      - apiserver:
+          capability: tosca.capabilities.Endpoint
+          relationship: kubetos.relationships.ConnectsToAPIServer
+          occurrences: [0, 1]
+#      - cri:
+#          capability: kubetos.capabilities.CRI
+#          relationship: kubetos.relationships.ConnectsToAPIServer
+#          occurrences: [0, 1]
+#      - cni:
+#          capability: kubetos.capabilities.CNI
+#          relationship: kubetos.relationships.ConnectsToAPIServer
+#          occurrences: [0, 1]
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          create:
+            inputs:
+              kubelet_version: { value: { get_property: [ SELF, version ] }, type: string }
+              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
+            implementation:
+              primary: ../ansible/kubelet--create.yaml
+              dependencies:
+                - ../../../roles
+          configure:
+            inputs:
+              kubelet_version: { value: { get_property: [ SELF, version ] }, type: string }
+              ip: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
+              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
+            implementation:
+              primary: ../ansible/kubelet--configure.yaml
+              dependencies:
+                - ../../../roles
