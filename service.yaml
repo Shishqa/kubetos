@@ -8,6 +8,7 @@ metadata:
 imports:
   - profiles/openstack/main.yaml
   - profiles/cri/main.yaml
+  - profiles/cni/main.yaml
 
 topology_template:
   node_templates:
@@ -77,6 +78,36 @@ topology_template:
       requirements:
         - host: compute
 
+    cni:
+      type: kubetos.nodes.CNI
+      capabilities:
+        cni:
+          properties:
+            version: v0.9.1
+            binary_dir: /opt/cni/bin
+            config_dir: /etc/cni/net.d
+      requirements:
+        - host: compute
+
+    cni_bridge:
+      type: kubetos.nodes.CNI.Plugin.Bridge
+      properties:
+        cni_version: 0.4.0
+        name: br
+        pod_cidr: 10.200.0.0/16
+      requirements:
+        - cni: cni
+        - host: compute
+
+    cni_loopback:
+      type: kubetos.nodes.CNI.Plugin.Loopback
+      properties:
+        cni_version: 0.4.0
+        name: lo
+      requirements:
+        - cni: cni
+        - host: compute
+
     crio:
       type: kubetos.nodes.CRI-O
       capabilities:
@@ -87,6 +118,7 @@ topology_template:
         - host: compute
         - oci_runtime: runc
         - oci_runtime: kata
+        - cni: cni
 
     crictl:
       type: kubetos.nodes.Crictl

@@ -371,12 +371,11 @@ registries = [
 # cni_default_network = ""
 
 # Path to the directory where CNI configuration files are located.
-network_dir = "/etc/cni/net.d/"
+network_dir = "{{ cni_conf_dir }}"
 
 # Paths to directories where CNI plugin binaries are located.
 plugin_dirs = [
-	"/opt/cni/bin",
-	"/usr/libexec/cni",
+	"{{ cni_bin_dir }}",
 ]
 
 # A necessary configuration for Prometheus based metrics retrieval

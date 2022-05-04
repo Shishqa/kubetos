@@ -1,5 +1,8 @@
 tosca_definitions_version: tosca_simple_yaml_1_3
 
+imports:
+  - ../cni/main.yaml
+
 capability_types:
 
   kubetos.capabilities.OCI.Runtime:
@@ -107,16 +110,21 @@ node_types:
           capability: kubetos.capabilities.OCI.Runtime
           relationship: kubetos.relationships.OCI.Plugin.CRI-O
           occurrences: [ 0, UNBOUNDED ]
+      - cni:
+          capability: kubetos.capabilities.CNI
+          relationship: tosca.relationships.DependsOn
+          occurrences: [ 1, 1 ]
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
           crio_version: { value: { get_property: [ SELF, version ] }, type: string }
-          ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
         operations:
           configure:
             inputs:
               crio_runtimes: { value: { get_attribute: [ SELF, runtimes ] }, type: list }
+              cni_bin_dir: { value: { get_property: [ SELF, cni, cni, binary_dir ] }, type: string }
+              cni_conf_dir: { value: { get_property: [ SELF, cni, cni, config_dir ] }, type: string }
             implementation:
               primary: ./ansible/cri-o--configure.yaml
               dependencies:
