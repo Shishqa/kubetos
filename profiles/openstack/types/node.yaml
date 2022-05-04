@@ -90,6 +90,7 @@ node_types:
               floating_ip_pool: { value: { get_property: [ SELF, floating_ip_pool ] }, type: string }
               key_name: { value: { get_property: [ SELF, key_name ] }, type: string }
               security_groups: { value: { get_attribute: [ SELF, security_group, name ] }, type: list }
+              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
             outputs:
               public_address: [ SELF, public_address ]
               private_address: [ SELF, private_address ]

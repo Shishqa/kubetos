@@ -65,8 +65,6 @@ topology_template:
             root: /run/runc
       requirements:
         - host: compute
-      artifacts:
-        ssh_key: id_rsa
 
     kata:
       type: kubetos.nodes.Kata
@@ -78,8 +76,6 @@ topology_template:
             root: /run/kata-containers
       requirements:
         - host: compute
-      artifacts:
-        ssh_key: id_rsa
 
     crio:
       type: kubetos.nodes.CRI-O
@@ -91,8 +87,6 @@ topology_template:
         - host: compute
         - oci_runtime: runc
         - oci_runtime: kata
-      artifacts:
-        ssh_key: id_rsa
 
     crictl:
       type: kubetos.nodes.Crictl
@@ -101,6 +95,4 @@ topology_template:
       requirements:
         - host: compute
         - cri_runtime: crio
-      artifacts:
-        ssh_key: id_rsa
 

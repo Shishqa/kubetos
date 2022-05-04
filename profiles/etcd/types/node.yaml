@@ -98,7 +98,6 @@ node_types:
           create:
             inputs:
               etcd_version: { value: { get_property: [ SELF, version ] }, type: string }
-              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
             implementation:
               primary: ../ansible/etcd--create.yaml
               dependencies:
@@ -111,7 +110,6 @@ node_types:
               etcd_access_address: { value: { get_attribute: [ SELF, host, public_address ] }, type: string }
               etcd_access_port: { value: { get_property: [ SELF, access_address, port ] }, type: integer }
               etcd_member_name: { value: { get_property: [ SELF, name ] }, type: string }
-              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
             implementation:
               primary: ../ansible/etcd--configure.yaml
               dependencies:
@@ -119,7 +117,6 @@ node_types:
           start:
             inputs:
               etcd_version: { value: { get_property: [ SELF, version ] }, type: string }
-              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
             implementation:
               primary: ../ansible/etcd--start.yaml
               dependencies:
