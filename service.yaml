@@ -9,6 +9,8 @@ imports:
   - profiles/openstack/main.yaml
   - profiles/cri/main.yaml
   - profiles/cni/main.yaml
+  - profiles/etcd/main.yaml
+  - profiles/kubernetes/main.yaml
 
 topology_template:
   node_templates:
@@ -45,7 +47,7 @@ topology_template:
     compute:
       type: openstack.nodes.Compute
       properties:
-        name: shishqa-test-xopera
+        name: shishqa-test-1--control-plane
         image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
         flavor: Standard1.small.s50
         network: net-for-intra-sandbox
@@ -127,4 +129,105 @@ topology_template:
       requirements:
         - host: compute
         - cri_runtime: crio
+
+    kubelet:
+      type: kubetos.nodes.Kubelet
+      capabilities:
+        static_pod_host:
+          properties:
+            path: /etc/kubernetes/manifests
+      properties:
+        version: { concat: [ 'v', { get_property: [ SELF, cri_runtime, version ] }, '.0' ] }
+      requirements:
+        - host: compute
+        - cri_runtime: crio
+
+    kubectl:
+      type: kubetos.nodes.Kubectl
+      properties:
+        version: v1.21.0
+      requirements:
+        - host: compute
+
+    compute_etcd:
+      type: openstack.nodes.Compute
+      properties:
+        name: shishqa-test-1--etcd
+        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
+        flavor: Standard1.small.s50
+        network: net-for-intra-sandbox
+        floating_ip_pool: ispras
+        key_name: shishqa
+      requirements:
+        - security_group: sg
+
+    etcd:
+      type: kubetos.nodes.Etcd
+      capabilities:
+        access_address:
+          properties:
+            port: 2379
+            api_version: v2
+        peer_address:
+          properties:
+            port: 2380
+      requirements:
+        - host: compute_etcd
+
+    apiserver:
+      type: kubetos.nodes.Kube.APIServer
+      capabilities:
+        access_address:
+          properties:
+            port: 6443
+      properties:
+        version: v1.21.0
+      requirements:
+        - host: kubelet
+        - etcd: etcd
+
+    scheduler:
+      type: kubetos.nodes.Kube.Scheduler
+      properties:
+        version: v1.21.0
+        config_path: /etc/kubernetes/kube-scheduler.yaml
+      requirements:
+        - host: kubelet
+        - apiserver:
+            node: apiserver
+            relationship: scheduler_to_apiserver
+
+    controller_manager:
+      type: kubetos.nodes.Kube.ControllerManager
+      properties:
+        version: v1.21.0
+        cluster_cidr: 10.233.64.0/18
+        service_cidr: 10.233.0.0/18
+      requirements:
+        - host: kubelet
+        - apiserver:
+            node: apiserver
+            relationship: controller_manager_to_apiserver
+
+  relationship_templates:
+
+    scheduler_to_apiserver:
+      type: kubetos.relationships.ConnectsToAPIServer
+      properties:
+        kubeconfig_path: /etc/kubernetes/scheduler.conf
+        cluster_name: test
+        user: system:kube-scheduler
+        ca_path: /etc/kubernetes/certs/ca.pem
+        cert_path: /etc/kubernetes/certs/kube-scheduler.pem
+        key_path: /etc/kubernetes/certs/kube-scheduler-key.pem
+
+    controller_manager_to_apiserver:
+      type: kubetos.relationships.ConnectsToAPIServer
+      properties:
+        kubeconfig_path: /etc/kubernetes/controller-manager.conf
+        cluster_name: test
+        user: system:kube-controller-manager
+        ca_path: /etc/kubernetes/certs/ca.pem
+        cert_path: /etc/kubernetes/certs/kube-controller-manager.pem
+        key_path: /etc/kubernetes/certs/kube-controller-manager-key.pem
 

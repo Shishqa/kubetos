@@ -1,10 +1,13 @@
 ---
 
-- name: Make sure kube_config_dir exists
+- name: Make sure directories exists
   file:
-    name: "{{ kube_config_dir }}"
+    name: "{{ item }}"
     state: directory
     mode: 0640
+  loop:
+    - "{{ kube_config_dir }}"
+    - "{{ kubelet_static_pod_path }}"
 
 - name: Set kubelet api version to v1beta1
   set_fact:

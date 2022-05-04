@@ -1,5 +1,8 @@
 ---
 
+kubelet_shutdown_grace_period: 30s
+kubelet_shutdown_grace_period_critical_pods: 20s
+
 _host_architecture_groups:
   x86_64: amd64
   aarch64: arm64

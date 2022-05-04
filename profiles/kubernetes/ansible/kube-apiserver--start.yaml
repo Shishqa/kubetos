@@ -1,0 +1,28 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Copy file with owner and permissions
+      ansible.builtin.copy:
+        src: certs
+        dest: /etc/kubernetes
+        owner: root
+        mode: '0640'
+
+    - name: Make sure directories exists
+      file:
+        name: "{{ item }}"
+        state: directory
+        mode: 0640
+      loop:
+        - "{{ static_pod_path }}"
+        - /etc/kubernetes/certs
+
+    - name: Create apiserver
+      template:
+        src: kube-apiserver.yaml.j2
+        dest: "{{ static_pod_path }}/kube-apiserver.yaml"
+        mode: 0644

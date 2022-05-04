@@ -61,7 +61,6 @@ node_types:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
           runc_version: { value: { get_property: [ SELF, version ] }, type: string }
-          ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
         operations:
           create:
             implementation:
@@ -80,7 +79,6 @@ node_types:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
           kata_containers_version: { value: { get_property: [ SELF, version ] }, type: string }
-          ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
         operations:
           create:
             implementation:
@@ -148,7 +146,6 @@ node_types:
             inputs:
               crictl_version: { value: { get_property: [ SELF, version ] }, type: string }
               cri_socket: { value: { get_property: [ SELF, cri_runtime, cri, url_path ] }, type: string }
-              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
             implementation:
               primary: ./ansible/crictl--create.yaml
               dependencies:

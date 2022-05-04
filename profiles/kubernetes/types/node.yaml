@@ -1,14 +1,73 @@
 tosca_definitions_version: tosca_simple_yaml_1_3
 
+imports:
+  - ../../cni/main.yaml
+  - ../../cri/main.yaml
+  - ../../etcd/main.yaml
+
 capability_types:
 
   kubetos.capabilities.StaticPodHost:
     derived_from: tosca.capabilities.Container
+    properties:
+      path:
+        type: string
 
 relationship_types:
 
   kubetos.relationships.ConnectsToAPIServer:
     derived_from: tosca.relationships.ConnectsTo
+    properties:
+      kubeconfig_path:
+        type: string
+      cluster_name:
+        type: string
+      user:
+        type: string
+      ca_path:
+        type: string
+      cert_path:
+        type: string
+      key_path:
+        type: string
+    interfaces:
+      Configure:
+        operations:
+          pre_configure_source:
+            inputs:
+              kubeconfig_path:
+                value: { get_property: [ SELF, kubeconfig_path ] }
+                type: string
+              cluster_name:
+                value: { get_property: [ SELF, cluster_name ] }
+                type: string
+              user:
+                value: { get_property: [ SELF, user ] }
+                type: string
+              ca_path:
+                value: { get_property: [ SELF, ca_path ] }
+                type: string
+              cert_path:
+                value: { get_property: [ SELF, cert_path ] }
+                type: string
+              key_path:
+                value: { get_property: [ SELF, key_path ] }
+                type: string
+              apiserver_address:
+                value: { get_attribute: [ TARGET, host, host, private_address ] }
+                type: string
+              apiserver_port:
+                value: "6443"
+                type: string
+            outputs:
+              kubeconfig_path: [ SOURCE, kubeconfig_path ]
+            implementation: ../ansible/connect-with-kubeconfig--preconfigure-source.yaml
+
+#  kubetos.relationships.MountsTo:
+#    derived_from: tosca.relationships.AttachesTo
+#    properties:
+#      read_only:
+#        type: boolean
 
 node_types:
 
@@ -26,32 +85,179 @@ node_types:
           capability: tosca.capabilities.Endpoint
           relationship: kubetos.relationships.ConnectsToAPIServer
           occurrences: [0, 1]
-#      - cri:
-#          capability: kubetos.capabilities.CRI
-#          relationship: kubetos.relationships.ConnectsToAPIServer
-#          occurrences: [0, 1]
-#      - cni:
-#          capability: kubetos.capabilities.CNI
-#          relationship: kubetos.relationships.ConnectsToAPIServer
-#          occurrences: [0, 1]
+      - cri_runtime:
+          capability: kubetos.capabilities.CRI
+          relationship: tosca.relationships.DependsOn
+          occurrences: [1, 1]
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          kubelet_version: { value: { get_property: [ SELF, version ] }, type: string }
         operations:
           create:
-            inputs:
-              kubelet_version: { value: { get_property: [ SELF, version ] }, type: string }
-              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
             implementation:
               primary: ../ansible/kubelet--create.yaml
               dependencies:
                 - ../../../roles
           configure:
             inputs:
-              kubelet_version: { value: { get_property: [ SELF, version ] }, type: string }
               ip: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
-              ssh_key: { value: { get_artifact: [ SELF, ssh_key ] }, type: string }
+              cri_socket: { value: { get_property: [ SELF, cri_runtime, cri, url_path ] }, type: string }
+              kubelet_static_pod_path: { value: { get_property: [ SELF, static_pod_host, path ] }, type: string }
             implementation:
               primary: ../ansible/kubelet--configure.yaml
               dependencies:
                 - ../../../roles
+          start:
+            implementation:
+              primary: ../ansible/kubelet--start.yaml
+              dependencies:
+                - ../../../roles
+
+  kubetos.nodes.Kubectl:
+    derived_from: tosca.nodes.SoftwareComponent
+    properties:
+      version:
+        type: string
+        default: v1.19.1
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          kubectl_version: { value: { get_property: [ SELF, version ] }, type: string }
+        operations:
+          create:
+            implementation:
+              primary: ../ansible/kubectl--create.yaml
+              dependencies:
+                - ../../../roles
+
+#  kubetos.nodes.Volume:
+#    derived_from: tosca.nodes.Root
+#    capabilities:
+#      volume: tosca.capabilities.Storage
+
+#  kubetos.nodes.Volume.HostPath:
+#    derived_from: kubetos.nodes.Volume
+#    properties:
+#      path:
+#        type: string
+#      type:
+#        type: string
+#
+#  kubetos.nodes.Pod:
+#    derived_from: tosca.nodes.Root
+#    attributes:
+#      container_specs:
+#        type: list
+#        default: []
+#    requirements:
+#      - volume:
+
+  kubetos.nodes.Kube.APIServer:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      access_address: tosca.capabilities.Endpoint
+    properties:
+      version:
+        type: string
+        default: v1.19.1
+    requirements:
+      - etcd:
+          capability: kubetos.capabilities.Etcd.Endpoint.Access
+          relationship: tosca.relationships.ConnectsTo
+      - host:
+          capability: kubetos.capabilities.StaticPodHost
+          relationship: tosca.relationships.HostedOn
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          static_pod_path: { value: { get_property: [ SELF, host, static_pod_host, path ] }, type: string }
+          kube_version: { value: { get_property: [ SELF, version ] }, type: string }
+          private_address: { value: { get_attribute: [ SELF, host, host, private_address ] }, type: string }
+          public_address: { value: { get_attribute: [ SELF, host, host, public_address ] }, type: string }
+          etcd_address: { value: { get_attribute: [ SELF, etcd, host, private_address ] }, type: string }
+          etcd_port: { value: { get_property: [ SELF, etcd, access_address, port ] }, type: string }
+        operations:
+          start:
+            implementation:
+              primary: ../ansible/kube-apiserver--start.yaml
+              dependencies:
+                - ../ansible/files/kube-apiserver.yaml.j2
+                - ../../../certs
+
+  kubetos.nodes.Kube.Scheduler:
+    derived_from: tosca.nodes.Root
+    properties:
+      version:
+        type: string
+        default: v1.19.1
+      config_path:
+        type: string
+    attributes:
+      kubeconfig_path:
+        type: string
+    requirements:
+      - apiserver:
+          capability: tosca.capabilities.Endpoint
+          relationship: kubetos.relationships.ConnectsToAPIServer
+      - host:
+          capability: kubetos.capabilities.StaticPodHost
+          relationship: tosca.relationships.HostedOn
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          static_pod_path: { value: { get_property: [ SELF, host, static_pod_host, path ] }, type: string }
+          kube_version: { value: { get_property: [ SELF, version ] }, type: string }
+          config_path: { value: { get_property: [ SELF, config_path ] }, type: string }
+        operations:
+          start:
+            inputs:
+              kubeconfig_path: { value: { get_attribute: [ SELF, kubeconfig_path ] }, type: string }
+            implementation:
+              primary: ../ansible/kube-scheduler--start.yaml
+              dependencies:
+                - ../ansible/files/kube-scheduler.yaml.j2
+                - ../ansible/files/kube-scheduler.config.yaml.j2
+                - ../../../certs
+
+  kubetos.nodes.Kube.ControllerManager:
+    derived_from: tosca.nodes.Root
+    properties:
+      version:
+        type: string
+        default: v1.19.1
+      cluster_cidr:
+        type: string
+      service_cidr:
+        type: string
+    attributes:
+      kubeconfig_path:
+        type: string
+    requirements:
+      - apiserver:
+          capability: tosca.capabilities.Endpoint
+          relationship: kubetos.relationships.ConnectsToAPIServer
+      - host:
+          capability: kubetos.capabilities.StaticPodHost
+          relationship: tosca.relationships.HostedOn
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          static_pod_path: { value: { get_property: [ SELF, host, static_pod_host, path ] }, type: string }
+          kube_version: { value: { get_property: [ SELF, version ] }, type: string }
+          cluster_cidr: { value: { get_property: [ SELF, cluster_cidr ] }, type: string }
+          service_cidr: { value: { get_property: [ SELF, service_cidr ] }, type: string }
+        operations:
+          start:
+            inputs:
+              kubeconfig_path: { value: { get_attribute: [ SELF, kubeconfig_path ] }, type: string }
+            implementation:
+              primary: ../ansible/kube-controller-manager--start.yaml
+              dependencies:
+                - ../ansible/files/kube-controller-manager.yaml.j2
+                - ../../../certs

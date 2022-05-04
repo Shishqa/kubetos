@@ -37,6 +37,7 @@ resolvConf: "{{ kube_resolv_conf }}"
 {% if kubelet_config_extra_args %}
 {{ kubelet_config_extra_args | to_nice_yaml(indent=2) }}
 {% endif %}
+staticPodPath: {{ kubelet_static_pod_path }}
 {% if tls_min_version is defined %}
 tlsMinVersion: {{ tls_min_version }}
 {% endif %}
