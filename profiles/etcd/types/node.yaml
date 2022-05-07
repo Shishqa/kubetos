@@ -24,15 +24,37 @@ capability_types:
         constraints:
           - valid_values: [ v1, v2 ]
 
+relationship_types:
+
+  kubetos.relationships.EtcdPeer:
+    derived_from: tosca.relationships.ConnectsTo
+    interfaces:
+      Configure:
+        type: tosca.interfaces.relationship.Configure
+        operations:
+          pre_configure_target:
+            inputs:
+              list: { value: { get_attribute: [ TARGET, peers ] }, type: list }
+              new_item:
+                value:
+                  name: { get_attribute: [ SOURCE, name ] }
+                  access_address: { get_attribute: [ SOURCE, host, private_address ] }
+                  access_port: { get_property: [ SOURCE, access_address, port ] }
+                  peer_address: { get_attribute: [ SOURCE, host, private_address ] }
+                  peer_port: { get_property: [ SOURCE, peer_address, port ] }
+                type: map
+            outputs:
+              new_list: [ TARGET, peers ]
+            implementation: ../../../add-to-list.yaml
+
 node_types:
 
   kubetos.nodes.Etcd.Cluster:
     derived_from: tosca.nodes.Root
-    requirements:
-      - peer:
-          capability: kubetos.capabilities.Etcd.Endpoint.Peer
-          occurrences: [ 1, UNBOUNDED ]
-
+    attributes:
+      peers:
+        type: list
+        default: []
 
   kubetos.nodes.Etcd:
     derived_from: tosca.nodes.SoftwareComponent
@@ -41,11 +63,11 @@ node_types:
         type: kubetos.capabilities.Etcd.Endpoint.Access
       peer_address:
         type: kubetos.capabilities.Etcd.Endpoint.Peer
-    properties:
+    attributes:
       name:
         type: string
-        default: etcd
-        required: false
+        default: { get_attribute: [ SELF, tosca_id ] }
+    properties:
       version:
         type: string
         default: v3.4.13
@@ -78,19 +100,11 @@ node_types:
         type: integer
         default: 0
         required: false
-#    attributes:
-#      access_addresses:
-#        type: list
-#        default: []
-#      peer_addresses:
-#        type: list
-#        default: []
-#    requirements:
-#      - peer:
-#          capability: tosca.capabilities.Endpoint
-#          node: etcd.nodes.Etcd
-#          relationship: etcd.relationships.ConnectsToEtcdCluster
-#          occurrences: [ 0, UNBOUNDED ]
+    requirements:
+      - cluster:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Etcd.Cluster
+          relationship: kubetos.relationships.EtcdPeer
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
@@ -107,9 +121,10 @@ node_types:
               etcd_version: { value: { get_property: [ SELF, version ] }, type: string }
               etcd_address: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
               etcd_peer_port: { value: { get_property: [ SELF, peer_address, port ] }, type: integer }
-              etcd_access_address: { value: { get_attribute: [ SELF, host, public_address ] }, type: string }
+              etcd_access_address: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
               etcd_access_port: { value: { get_property: [ SELF, access_address, port ] }, type: integer }
-              etcd_member_name: { value: { get_property: [ SELF, name ] }, type: string }
+              etcd_member_name: { value: { get_attribute: [ SELF, name ] }, type: string }
+              etcd_peers: { value: { get_attribute: [ SELF, cluster, peers ] }, type: list }
             implementation:
               primary: ../ansible/etcd--configure.yaml
               dependencies:

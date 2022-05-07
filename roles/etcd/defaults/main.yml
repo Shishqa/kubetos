@@ -2,6 +2,10 @@
 
 etcd_version: TODO
 
+etcd_peer_addresses: |-
+  {% for item in etcd_peers -%}
+    {{ item.name }}=http://{{ item.peer_address }}:{{ item.peer_port }}{% if not loop.last %},{% endif %}
+  {%- endfor %}
 
 
 bin_dir: /usr/local/bin

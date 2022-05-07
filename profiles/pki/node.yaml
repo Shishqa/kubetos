@@ -57,7 +57,7 @@ node_types:
       organisation:
         type: string
       hostnames:
-        type: string
+        type: list
         entry_schema:
           type: string
         default: []

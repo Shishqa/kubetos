@@ -45,6 +45,97 @@ topology_template:
       requirements:
         - security_group: sg
 
+    # === ETCD
+
+    compute_1:
+      type: openstack.nodes.Compute
+      properties:
+        name: shishqa-test--etcd-1
+        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
+        flavor: Standard1.small.s50
+        network: net-for-intra-sandbox
+        floating_ip_pool: ispras
+        key_name: shishqa
+      requirements:
+        - security_group: sg
+      artifacts:
+        ssh_key: id_rsa
+
+    etcd_1:
+      type: kubetos.nodes.Etcd
+      capabilities:
+        access_address:
+          properties:
+            port: 2379
+            api_version: v2
+        peer_address:
+          properties:
+            port: 2380
+      requirements:
+        - host: compute_1
+        - cluster: etcd_cluster
+
+    compute_2:
+      type: openstack.nodes.Compute
+      properties:
+        name: shishqa-test--etcd-2
+        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
+        flavor: Standard1.small.s50
+        network: net-for-intra-sandbox
+        floating_ip_pool: ispras
+        key_name: shishqa
+      requirements:
+        - security_group: sg
+      artifacts:
+        ssh_key: id_rsa
+
+    etcd_2:
+      type: kubetos.nodes.Etcd
+      capabilities:
+        access_address:
+          properties:
+            port: 2379
+            api_version: v2
+        peer_address:
+          properties:
+            port: 2380
+      requirements:
+        - host: compute_2
+        - cluster: etcd_cluster
+
+    compute_3:
+      type: openstack.nodes.Compute
+      properties:
+        name: shishqa-test--etcd-3
+        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
+        flavor: Standard1.small.s50
+        network: net-for-intra-sandbox
+        floating_ip_pool: ispras
+        key_name: shishqa
+      requirements:
+        - security_group: sg
+      artifacts:
+        ssh_key: id_rsa
+
+    etcd_3:
+      type: kubetos.nodes.Etcd
+      capabilities:
+        access_address:
+          properties:
+            port: 2379
+            api_version: v2
+        peer_address:
+          properties:
+            port: 2380
+      requirements:
+        - host: compute_3
+        - cluster: etcd_cluster
+
+    etcd_cluster:
+      type: kubetos.nodes.Etcd.Cluster
+
+    # ===
+
     compute:
       type: openstack.nodes.Compute
       properties:
@@ -58,47 +149,6 @@ topology_template:
         - security_group: sg
       artifacts:
         ssh_key: id_rsa
-
-    compute_etcd:
-      type: openstack.nodes.Compute
-      properties:
-        name: shishqa-test--etcd
-        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
-        flavor: Standard1.small.s50
-        network: net-for-intra-sandbox
-        floating_ip_pool: ispras
-        key_name: shishqa
-      requirements:
-        - security_group: sg
-      artifacts:
-        ssh_key: ./id_rsa
-
-    compute_worker:
-      type: openstack.nodes.Compute
-      properties:
-        name: shishqa-test--worker
-        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
-        flavor: Standard1.small.s50
-        network: net-for-intra-sandbox
-        floating_ip_pool: ispras
-        key_name: shishqa
-      requirements:
-        - security_group: sg
-      artifacts:
-        ssh_key: id_rsa
-
-    etcd:
-      type: kubetos.nodes.Etcd
-      capabilities:
-        access_address:
-          properties:
-            port: 2379
-            api_version: v2
-        peer_address:
-          properties:
-            port: 2380
-      requirements:
-        - host: compute_etcd
 
     # === PKI ===
 
@@ -184,20 +234,6 @@ topology_template:
         - ca: kubernetes_ca
         - dependency: compute
 
-    kubelet_worker_cert:
-      type: kubetos.nodes.Certificate
-      properties:
-        common_name: { concat: [ "system:node:", { get_property: [ SELF, dependency, name ] } ] }
-        organisation: system:nodes
-        hostnames:
-          - { get_property: [ SELF, dependency, name ] }
-          - { get_attribute: [ SELF, dependency, private_address ] }
-          - { get_attribute: [ SELF, dependency, public_address ] }
-          - 127.0.0.1
-      requirements:
-        - ca: kubernetes_ca
-        - dependency: compute_worker
-
     kubernetes_ca_mirror:
       type: kubetos.nodes.CertificateMirror
       properties:
@@ -279,14 +315,6 @@ topology_template:
         - cert: kubelet_cert
         - host: compute
 
-    kubelet_worker_cert_mirror:
-      type: kubetos.nodes.CertificateMirror
-      properties:
-        cert_path: /etc/kubernetes/pki/kubelet.crt
-        key_path: /etc/kubernetes/pki/kubelet.key
-      requirements:
-        - cert: kubelet_worker_cert
-        - host: compute_worker
 
     admin_cert_mirror:
       type: kubetos.nodes.CertificateMirror
@@ -380,7 +408,7 @@ topology_template:
 
     # === Kubeconfigs ===
 
-    kube_cluster:
+    kube_local_cluster:
       type: kubetos.nodes.Kubernetes.Cluster
       capabilities:
         cluster:
@@ -390,25 +418,6 @@ topology_template:
         apiserver_address: 127.0.0.1
       requirements:
         - ca: kubernetes_ca_mirror
-
-    admin_user:
-      type: kubetos.nodes.Kubernetes.User
-      capabilities:
-        user:
-          properties:
-            name: default-admin
-      requirements:
-        - cert: admin_cert_mirror
-
-    admin_kubeconfig:
-      type: kubetos.nodes.Kubeconfig
-      properties:
-        path: /etc/kubernetes/admin.conf
-      requirements:
-        - cluster: kube_cluster
-        - user: admin_user
-        - kubectl: kubectl
-        - host: compute
 
     kubelet_user:
       type: kubetos.nodes.Kubernetes.User
@@ -424,7 +433,7 @@ topology_template:
       properties:
         path: /etc/kubernetes/kubelet.conf
       requirements:
-        - cluster: kube_cluster
+        - cluster: kube_local_cluster
         - user: kubelet_user
         - kubectl: kubectl
         - host: compute
@@ -443,7 +452,7 @@ topology_template:
       properties:
         path: /etc/kubernetes/controller-manager.conf
       requirements:
-        - cluster: kube_cluster
+        - cluster: kube_local_cluster
         - user: controller_manager_user
         - kubectl: kubectl
         - host: compute
@@ -462,7 +471,7 @@ topology_template:
       properties:
         path: /etc/kubernetes/scheduler.conf
       requirements:
-        - cluster: kube_cluster
+        - cluster: kube_local_cluster
         - user: scheduler_user
         - kubectl: kubectl
         - host: compute
@@ -493,7 +502,7 @@ topology_template:
         version: v1.21.0
       requirements:
         - host: kubelet
-        - etcd: etcd
+        - etcd: etcd_cluster
         - ca: kubernetes_ca_mirror
         - cert: kube_apiserver_cert_mirror
         - kubelet_client_cert: kube_apiserver_client_cert_mirror
@@ -520,7 +529,75 @@ topology_template:
         - service_account_cert: service_account_cert_mirror
         - kubeconfig: controller_manager_kubeconfig
 
+    # === cluster definition
 
+    kube_cluster:
+      type: kubetos.nodes.Kubernetes.Cluster
+      capabilities:
+        cluster:
+          properties:
+            name: test-cluster
+      requirements:
+        - ca: kubernetes_ca_mirror
+        - apiserver: apiserver
+
+    admin_user:
+      type: kubetos.nodes.Kubernetes.User
+      capabilities:
+        user:
+          properties:
+            name: default-admin
+      requirements:
+        - cert: admin_cert_mirror
+
+    admin_kubeconfig:
+      type: kubetos.nodes.Kubeconfig
+      properties:
+        path: /etc/kubernetes/admin.conf
+      requirements:
+        - cluster: kube_cluster
+        - user: admin_user
+        - kubectl: kubectl
+        - host: compute
+
+    # === worker
+
+    compute_worker:
+      type: openstack.nodes.Compute
+      properties:
+        name: shishqa-test--worker
+        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
+        flavor: Standard1.small.s50
+        network: net-for-intra-sandbox
+        floating_ip_pool: ispras
+        key_name: shishqa
+      requirements:
+        - security_group: sg
+      artifacts:
+        ssh_key: id_rsa
+
+    kubelet_worker_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: { concat: [ "system:node:", { get_property: [ SELF, dependency, name ] } ] }
+        organisation: system:nodes
+        hostnames:
+          - { get_property: [ SELF, dependency, name ] }
+          - { get_attribute: [ SELF, dependency, private_address ] }
+          - { get_attribute: [ SELF, dependency, public_address ] }
+          - 127.0.0.1
+      requirements:
+        - ca: kubernetes_ca
+        - dependency: compute_worker
+
+    kubelet_worker_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/kubelet.crt
+        key_path: /etc/kubernetes/pki/kubelet.key
+      requirements:
+        - cert: kubelet_worker_cert
+        - host: compute_worker
 
     runc_worker:
       type: kubetos.nodes.Runc
@@ -600,3 +677,36 @@ topology_template:
         version: v1.21.0
       requirements:
         - host: compute_worker
+
+    worker_user:
+      type: kubetos.nodes.Kubernetes.User
+      capabilities:
+        user:
+          properties:
+            name: default-auth
+      requirements:
+        - cert: kubelet_worker_cert_mirror
+
+    worker_kubeconfig:
+      type: kubetos.nodes.Kubeconfig
+      properties:
+        path: /etc/kubernetes/kubelet.conf
+      requirements:
+        - cluster: kube_cluster
+        - user: worker_user
+        - kubectl: kubectl_worker
+        - host: compute_worker
+
+    worker:
+      type: kubetos.nodes.Kubelet
+      capabilities:
+        kubelet:
+          properties:
+            static_pod_path: /etc/kubernetes/manifests
+      properties:
+        version: { concat: [ 'v', { get_property: [ SELF, cri_runtime, version ] }, '.0' ] }
+      requirements:
+        - host: compute_worker
+        - cri_runtime: crio_worker
+        - kubeconfig: worker_kubeconfig
+        - ca: kubernetes_ca_worker_mirror

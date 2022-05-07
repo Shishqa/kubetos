@@ -26,7 +26,7 @@ spec:
     - --enable-aggregator-routing=False
     - --enable-bootstrap-token-auth=true
     - --endpoint-reconciler-type=lease
-    - --etcd-servers=http://{{ etcd_address }}:{{ etcd_port }}
+    - --etcd-servers={%- for item in etcd_peers -%}http://{{ item.access_address }}:{{ item.access_port }}{% if not loop.last %},{% endif %}{%- endfor -%}
     - --event-ttl=1h0m0s
     - --kubelet-certificate-authority={{ ca_cert_path }}
     - --kubelet-client-certificate={{ kubelet_client_cert_path }}

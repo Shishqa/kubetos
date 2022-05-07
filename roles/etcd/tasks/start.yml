@@ -9,3 +9,4 @@
     name: etcd
     state: started
     enabled: yes
+  failed_when: false

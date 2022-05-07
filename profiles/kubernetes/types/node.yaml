@@ -259,7 +259,8 @@ node_types:
           capability: kubetos.capabilities.Certificate
           relationship: tosca.relationships.DependsOn
       - etcd:
-          capability: kubetos.capabilities.Etcd.Endpoint.Access
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Etcd.Cluster
           relationship: tosca.relationships.ConnectsTo
       - host:
           capability: kubetos.capabilities.Kubelet
@@ -289,8 +290,9 @@ node_types:
           kubelet_client_key_path:
             value: { get_property: [ SELF, kubelet_client_cert, key_path ] }
             type: string
-          etcd_address: { value: { get_attribute: [ SELF, etcd, host, private_address ] }, type: string }
-          etcd_port: { value: { get_property: [ SELF, etcd, access_address, port ] }, type: string }
+          etcd_peers:
+            value: { get_attribute: [ SELF, etcd, peers ] }
+            type: list
           kube_version: { value: { get_property: [ SELF, version ] }, type: string }
           private_address: { value: { get_attribute: [ SELF, host, host, private_address ] }, type: string }
           public_address: { value: { get_attribute: [ SELF, host, host, public_address ] }, type: string }
