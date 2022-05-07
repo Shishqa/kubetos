@@ -1,0 +1,26 @@
+- hosts: all
+  gather_facts: no
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        mode: 0644
+        state: directory
+      loop:
+        - "{{ cert_path | dirname }}"
+        - "{{ key_path | dirname }}"
+
+    - name: Write cert
+      copy:
+        dest: "{{ cert_path }}"
+        content: "{{ cert }}"
+        mode: 0644
+
+    - name: Write key
+      copy:
+        dest: "{{ key_path }}"
+        content: "{{ key }}"
+        mode: 0644

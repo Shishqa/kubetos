@@ -10,6 +10,7 @@ imports:
   - profiles/cri/main.yaml
   - profiles/cni/main.yaml
   - profiles/etcd/main.yaml
+  - profiles/pki/node.yaml
   - profiles/kubernetes/main.yaml
 
 topology_template:
@@ -47,7 +48,7 @@ topology_template:
     compute:
       type: openstack.nodes.Compute
       properties:
-        name: shishqa-test-1--control-plane
+        name: shishqa-test--control-plane
         image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
         flavor: Standard1.small.s50
         network: net-for-intra-sandbox
@@ -57,6 +58,246 @@ topology_template:
         - security_group: sg
       artifacts:
         ssh_key: id_rsa
+
+    compute_etcd:
+      type: openstack.nodes.Compute
+      properties:
+        name: shishqa-test--etcd
+        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
+        flavor: Standard1.small.s50
+        network: net-for-intra-sandbox
+        floating_ip_pool: ispras
+        key_name: shishqa
+      requirements:
+        - security_group: sg
+      artifacts:
+        ssh_key: ./id_rsa
+
+    compute_worker:
+      type: openstack.nodes.Compute
+      properties:
+        name: shishqa-test--worker
+        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
+        flavor: Standard1.small.s50
+        network: net-for-intra-sandbox
+        floating_ip_pool: ispras
+        key_name: shishqa
+      requirements:
+        - security_group: sg
+      artifacts:
+        ssh_key: id_rsa
+
+    etcd:
+      type: kubetos.nodes.Etcd
+      capabilities:
+        access_address:
+          properties:
+            port: 2379
+            api_version: v2
+        peer_address:
+          properties:
+            port: 2380
+      requirements:
+        - host: compute_etcd
+
+    # === PKI ===
+
+    kubernetes_ca:
+      type: kubetos.nodes.CertificateAuthority
+      properties:
+        common_name: kubernetes-ca
+        organisation: kubernetes
+
+    kube_apiserver_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: kubernetes
+        organisation: kubernetes
+        hostnames:
+          - { get_property: [ SELF, dependency, name ] }
+          - { get_attribute: [ SELF, dependency, private_address ] }
+          - { get_attribute: [ SELF, dependency, public_address ] }
+          - 127.0.0.1
+      requirements:
+        - ca: kubernetes_ca
+        - dependency: compute
+
+    kube_controller_manager_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: system:kube-controller-manager
+        organisation: system:kube-controller-manager
+      requirements:
+        - ca: kubernetes_ca
+
+    kube_scheduler_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: system:kube-scheduler
+        organisation: system:kube-scheduler
+      requirements:
+        - ca: kubernetes_ca
+
+    kube_apiserver_client_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: kubernetes
+        organisation: system:masters
+      requirements:
+        - ca: kubernetes_ca
+
+    front_proxy_client_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: front-proxy
+        organisation: kubernetes
+      requirements:
+        - ca: kubernetes_ca
+
+    service_account_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: service-accounts
+        organisation: kubernetes
+      requirements:
+        - ca: kubernetes_ca
+
+    admin_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: kubernetes-admin
+        organisation: system:masters
+      requirements:
+        - ca: kubernetes_ca
+
+    kubelet_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: { concat: [ "system:node:", { get_property: [ SELF, dependency, name ] } ] }
+        organisation: system:nodes
+        hostnames:
+          - { get_property: [ SELF, dependency, name ] }
+          - { get_attribute: [ SELF, dependency, private_address ] }
+          - { get_attribute: [ SELF, dependency, public_address ] }
+          - 127.0.0.1
+      requirements:
+        - ca: kubernetes_ca
+        - dependency: compute
+
+    kubelet_worker_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: { concat: [ "system:node:", { get_property: [ SELF, dependency, name ] } ] }
+        organisation: system:nodes
+        hostnames:
+          - { get_property: [ SELF, dependency, name ] }
+          - { get_attribute: [ SELF, dependency, private_address ] }
+          - { get_attribute: [ SELF, dependency, public_address ] }
+          - 127.0.0.1
+      requirements:
+        - ca: kubernetes_ca
+        - dependency: compute_worker
+
+    kubernetes_ca_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/ca.crt
+        key_path: /etc/kubernetes/pki/ca.key
+      requirements:
+        - cert: kubernetes_ca
+        - host: compute
+
+    kubernetes_ca_worker_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/ca.crt
+        key_path: /etc/kubernetes/pki/ca.key
+      requirements:
+        - cert: kubernetes_ca
+        - host: compute_worker
+
+    kube_apiserver_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/apiserver.crt
+        key_path: /etc/kubernetes/pki/apiserver.key
+      requirements:
+        - cert: kube_apiserver_cert
+        - host: compute
+
+    kube_controller_manager_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/controller-manager.crt
+        key_path: /etc/kubernetes/pki/controller-manager.key
+      requirements:
+        - cert: kube_controller_manager_cert
+        - host: compute
+
+    kube_scheduler_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/scheduler.crt
+        key_path: /etc/kubernetes/pki/scheduler.key
+      requirements:
+        - cert: kube_scheduler_cert
+        - host: compute
+
+    kube_apiserver_client_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/apiserver-kubelet-client.crt
+        key_path: /etc/kubernetes/pki/apiserver-kubelet-client.key
+      requirements:
+        - cert: kube_apiserver_client_cert
+        - host: compute
+
+    front_proxy_client_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/front-proxy-client.crt
+        key_path: /etc/kubernetes/pki/front-proxy-client.key
+      requirements:
+        - cert: front_proxy_client_cert
+        - host: compute
+
+    service_account_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/sa.crt
+        key_path: /etc/kubernetes/pki/sa.key
+      requirements:
+        - cert: service_account_cert
+        - host: compute
+
+    kubelet_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/kubelet.crt
+        key_path: /etc/kubernetes/pki/kubelet.key
+      requirements:
+        - cert: kubelet_cert
+        - host: compute
+
+    kubelet_worker_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/kubelet.crt
+        key_path: /etc/kubernetes/pki/kubelet.key
+      requirements:
+        - cert: kubelet_worker_cert
+        - host: compute_worker
+
+    admin_cert_mirror:
+      type: kubetos.nodes.CertificateMirror
+      properties:
+        cert_path: /etc/kubernetes/pki/admin.crt
+        key_path: /etc/kubernetes/pki/admin.key
+      requirements:
+        - cert: admin_cert
+        - host: compute
+
+    # === Platform ===
 
     runc:
       type: kubetos.nodes.Runc
@@ -130,18 +371,6 @@ topology_template:
         - host: compute
         - cri_runtime: crio
 
-    kubelet:
-      type: kubetos.nodes.Kubelet
-      capabilities:
-        static_pod_host:
-          properties:
-            path: /etc/kubernetes/manifests
-      properties:
-        version: { concat: [ 'v', { get_property: [ SELF, cri_runtime, version ] }, '.0' ] }
-      requirements:
-        - host: compute
-        - cri_runtime: crio
-
     kubectl:
       type: kubetos.nodes.Kubectl
       properties:
@@ -149,30 +378,110 @@ topology_template:
       requirements:
         - host: compute
 
-    compute_etcd:
-      type: openstack.nodes.Compute
-      properties:
-        name: shishqa-test-1--etcd
-        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
-        flavor: Standard1.small.s50
-        network: net-for-intra-sandbox
-        floating_ip_pool: ispras
-        key_name: shishqa
-      requirements:
-        - security_group: sg
+    # === Kubeconfigs ===
 
-    etcd:
-      type: kubetos.nodes.Etcd
+    kube_cluster:
+      type: kubetos.nodes.Kubernetes.Cluster
       capabilities:
-        access_address:
+        cluster:
           properties:
-            port: 2379
-            api_version: v2
-        peer_address:
-          properties:
-            port: 2380
+            name: test-cluster
+      attributes:
+        apiserver_address: 127.0.0.1
       requirements:
-        - host: compute_etcd
+        - ca: kubernetes_ca_mirror
+
+    admin_user:
+      type: kubetos.nodes.Kubernetes.User
+      capabilities:
+        user:
+          properties:
+            name: default-admin
+      requirements:
+        - cert: admin_cert_mirror
+
+    admin_kubeconfig:
+      type: kubetos.nodes.Kubeconfig
+      properties:
+        path: /etc/kubernetes/admin.conf
+      requirements:
+        - cluster: kube_cluster
+        - user: admin_user
+        - kubectl: kubectl
+        - host: compute
+
+    kubelet_user:
+      type: kubetos.nodes.Kubernetes.User
+      capabilities:
+        user:
+          properties:
+            name: default-auth
+      requirements:
+        - cert: kubelet_cert_mirror
+
+    kubelet_kubeconfig:
+      type: kubetos.nodes.Kubeconfig
+      properties:
+        path: /etc/kubernetes/kubelet.conf
+      requirements:
+        - cluster: kube_cluster
+        - user: kubelet_user
+        - kubectl: kubectl
+        - host: compute
+
+    controller_manager_user:
+      type: kubetos.nodes.Kubernetes.User
+      capabilities:
+        user:
+          properties:
+            name: default-controller-manager
+      requirements:
+        - cert: kube_controller_manager_cert_mirror
+
+    controller_manager_kubeconfig:
+      type: kubetos.nodes.Kubeconfig
+      properties:
+        path: /etc/kubernetes/controller-manager.conf
+      requirements:
+        - cluster: kube_cluster
+        - user: controller_manager_user
+        - kubectl: kubectl
+        - host: compute
+
+    scheduler_user:
+      type: kubetos.nodes.Kubernetes.User
+      capabilities:
+        user:
+          properties:
+            name: default-scheduler
+      requirements:
+        - cert: kube_scheduler_cert_mirror
+
+    scheduler_kubeconfig:
+      type: kubetos.nodes.Kubeconfig
+      properties:
+        path: /etc/kubernetes/scheduler.conf
+      requirements:
+        - cluster: kube_cluster
+        - user: scheduler_user
+        - kubectl: kubectl
+        - host: compute
+
+    # === Kubernetes control-plane ===
+
+    kubelet:
+      type: kubetos.nodes.Kubelet
+      capabilities:
+        kubelet:
+          properties:
+            static_pod_path: /etc/kubernetes/manifests
+      properties:
+        version: { concat: [ 'v', { get_property: [ SELF, cri_runtime, version ] }, '.0' ] }
+      requirements:
+        - host: compute
+        - cri_runtime: crio
+        - kubeconfig: kubelet_kubeconfig
+        - ca: kubernetes_ca_mirror
 
     apiserver:
       type: kubetos.nodes.Kube.APIServer
@@ -185,6 +494,10 @@ topology_template:
       requirements:
         - host: kubelet
         - etcd: etcd
+        - ca: kubernetes_ca_mirror
+        - cert: kube_apiserver_cert_mirror
+        - kubelet_client_cert: kube_apiserver_client_cert_mirror
+        - service_account_cert: service_account_cert_mirror
 
     scheduler:
       type: kubetos.nodes.Kube.Scheduler
@@ -193,9 +506,7 @@ topology_template:
         config_path: /etc/kubernetes/kube-scheduler.yaml
       requirements:
         - host: kubelet
-        - apiserver:
-            node: apiserver
-            relationship: scheduler_to_apiserver
+        - kubeconfig: scheduler_kubeconfig
 
     controller_manager:
       type: kubetos.nodes.Kube.ControllerManager
@@ -205,29 +516,87 @@ topology_template:
         service_cidr: 10.233.0.0/18
       requirements:
         - host: kubelet
-        - apiserver:
-            node: apiserver
-            relationship: controller_manager_to_apiserver
+        - ca: kubernetes_ca_mirror
+        - service_account_cert: service_account_cert_mirror
+        - kubeconfig: controller_manager_kubeconfig
 
-  relationship_templates:
 
-    scheduler_to_apiserver:
-      type: kubetos.relationships.ConnectsToAPIServer
+
+    runc_worker:
+      type: kubetos.nodes.Runc
+      capabilities:
+        oci:
+          properties:
+            name: runc
+            path: /usr/sbin/runc
+            root: /run/runc
+      requirements:
+        - host: compute_worker
+
+    kata_worker:
+      type: kubetos.nodes.Kata
+      capabilities:
+        oci:
+          properties:
+            name: kata
+            path: /opt/kata/bin/kata-runtime
+            root: /run/kata-containers
+      requirements:
+        - host: compute_worker
+
+    cni_worker:
+      type: kubetos.nodes.CNI
+      capabilities:
+        cni:
+          properties:
+            version: v0.9.1
+            binary_dir: /opt/cni/bin
+            config_dir: /etc/cni/net.d
+      requirements:
+        - host: compute_worker
+
+    cni_bridge_worker:
+      type: kubetos.nodes.CNI.Plugin.Bridge
       properties:
-        kubeconfig_path: /etc/kubernetes/scheduler.conf
-        cluster_name: test
-        user: system:kube-scheduler
-        ca_path: /etc/kubernetes/certs/ca.pem
-        cert_path: /etc/kubernetes/certs/kube-scheduler.pem
-        key_path: /etc/kubernetes/certs/kube-scheduler-key.pem
+        cni_version: 0.4.0
+        name: br
+        pod_cidr: 10.200.0.0/16
+      requirements:
+        - cni: cni_worker
+        - host: compute_worker
 
-    controller_manager_to_apiserver:
-      type: kubetos.relationships.ConnectsToAPIServer
+    cni_loopback_worker:
+      type: kubetos.nodes.CNI.Plugin.Loopback
       properties:
-        kubeconfig_path: /etc/kubernetes/controller-manager.conf
-        cluster_name: test
-        user: system:kube-controller-manager
-        ca_path: /etc/kubernetes/certs/ca.pem
-        cert_path: /etc/kubernetes/certs/kube-controller-manager.pem
-        key_path: /etc/kubernetes/certs/kube-controller-manager-key.pem
+        cni_version: 0.4.0
+        name: lo
+      requirements:
+        - cni: cni_worker
+        - host: compute_worker
 
+    crio_worker:
+      type: kubetos.nodes.CRI-O
+      capabilities:
+        cri:
+          properties:
+            url_path: /var/run/crio/crio.sock
+      requirements:
+        - host: compute_worker
+        - oci_runtime: runc_worker
+        - oci_runtime: kata_worker
+        - cni: cni_worker
+
+    crictl_worker:
+      type: kubetos.nodes.Crictl
+      properties:
+        version: { concat: [ 'v', { get_property: [ SELF, cri_runtime, version ] }, '.0' ] }
+      requirements:
+        - host: compute_worker
+        - cri_runtime: crio_worker
+
+    kubectl_worker:
+      type: kubetos.nodes.Kubectl
+      properties:
+        version: v1.21.0
+      requirements:
+        - host: compute_worker

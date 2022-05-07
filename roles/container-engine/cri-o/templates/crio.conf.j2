@@ -134,7 +134,7 @@ default_env = [
 # Path to the seccomp.json profile which is used as the default seccomp profile
 # for the runtime. If not specified, then the internal default seccomp profile
 # will be used. This option supports live configuration reload.
-# seccomp_profile = "{ crio_seccomp_profile }}"
+seccomp_profile = "/etc/crio/seccomp.json"
 
 # Used to change the name of the default AppArmor profile of CRI-O. The default
 # profile name is "crio-default". This profile only takes effect if the user
@@ -144,7 +144,7 @@ default_env = [
 # apparmor_profile = "crio-default"
 
 # Cgroup management implementation used for the runtime.
-# cgroup_manager = "{ crio_cgroup_manager }}"
+cgroup_manager = "systemd"
 
 # List of default capabilities for containers. If it is empty or commented out,
 # only the capabilities defined in the containers json file by the user/kube

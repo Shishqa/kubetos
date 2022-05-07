@@ -15,11 +15,11 @@ spec:
     - --authentication-kubeconfig={{ kubeconfig_path }}
     - --authorization-kubeconfig={{ kubeconfig_path }}
     - --bind-address=0.0.0.0
-    - --client-ca-file=/etc/kubernetes/certs/ca.pem
+    - --client-ca-file={{ ca_cert_path }}
     - --cluster-cidr={{ cluster_cidr }}
     - --cluster-name=k8s-shishqa-test
-    - --cluster-signing-cert-file=/etc/kubernetes/certs/kubernetes.pem
-    - --cluster-signing-key-file=/etc/kubernetes/certs/kubernetes-key.pem
+    - --cluster-signing-cert-file={{ ca_cert_path }}
+    - --cluster-signing-key-file={{ ca_key_path }}
     - --configure-cloud-routes=false
     - --controllers=*,bootstrapsigner,tokencleaner
     - --kubeconfig={{ kubeconfig_path }}
@@ -31,9 +31,9 @@ spec:
     - --node-monitor-period=5s
     - --port=0
     - --profiling=False
-    - --requestheader-client-ca-file=/etc/kubernetes/certs/kubernetes.pem
-    - --root-ca-file=/etc/kubernetes/certs/ca.pem
-    - --service-account-private-key-file=/etc/kubernetes/certs/kubernetes-key.pem
+    - --requestheader-client-ca-file={{ ca_cert_path }}
+    - --root-ca-file={{ ca_cert_path }}
+    - --service-account-private-key-file={{ sa_key_path }}
     - --service-cluster-ip-range={{ service_cidr }}
     - --terminated-pod-gc-threshold=12500
     - --use-service-account-credentials=true
@@ -62,55 +62,41 @@ spec:
       periodSeconds: 10
       timeoutSeconds: 15
     volumeMounts:
-    - mountPath: /etc/ssl/certs
-      name: ca-certs
-      readOnly: true
-    - mountPath: /etc/ca-certificates
-      name: etc-ca-certificates
-      readOnly: true
     - mountPath: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
       name: flexvolume-dir
-    - mountPath: /etc/kubernetes/certs
-      name: k8s-certs
-      readOnly: true
     - mountPath: {{ kubeconfig_path }}
       name: kubeconfig
       readOnly: true
-    - mountPath: /usr/local/share/ca-certificates
-      name: usr-local-share-ca-certificates
+    - mountPath: {{ ca_cert_path }}
+      name: ca-cert
       readOnly: true
-    - mountPath: /usr/share/ca-certificates
-      name: usr-share-ca-certificates
+    - mountPath: {{ ca_key_path }}
+      name: ca-key
+      readOnly: true
+    - mountPath: {{ sa_key_path }}
+      name: sa-key
       readOnly: true
   hostNetwork: true
   priorityClassName: system-node-critical
   volumes:
   - hostPath:
-      path: /etc/ssl/certs
-      type: DirectoryOrCreate
-    name: ca-certs
-  - hostPath:
-      path: /etc/ca-certificates
-      type: DirectoryOrCreate
-    name: etc-ca-certificates
-  - hostPath:
       path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
       type: DirectoryOrCreate
     name: flexvolume-dir
-  - hostPath:
-      path: /etc/kubernetes/certs
-      type: DirectoryOrCreate
-    name: k8s-certs
   - hostPath:
       path: {{ kubeconfig_path }}
       type: FileOrCreate
     name: kubeconfig
   - hostPath:
-      path: /usr/local/share/ca-certificates
-      type: DirectoryOrCreate
-    name: usr-local-share-ca-certificates
+      path: {{ ca_cert_path }}
+      type: FileOrCreate
+    name: ca-cert
   - hostPath:
-      path: /usr/share/ca-certificates
-      type: DirectoryOrCreate
-    name: usr-share-ca-certificates
+      path: {{ ca_key_path }}
+      type: FileOrCreate
+    name: ca-key
+  - hostPath:
+      path: {{ sa_key_path }}
+      type: FileOrCreate
+    name: sa-key
 status: {}

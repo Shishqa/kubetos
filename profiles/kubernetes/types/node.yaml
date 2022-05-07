@@ -4,64 +4,39 @@ imports:
   - ../../cni/main.yaml
   - ../../cri/main.yaml
   - ../../etcd/main.yaml
+  - ../../pki/node.yaml
 
 capability_types:
 
-  kubetos.capabilities.StaticPodHost:
+  kubetos.capabilities.Kubelet:
     derived_from: tosca.capabilities.Container
     properties:
-      path:
+      static_pod_path:
+        type: string
+
+  kubetos.capabilities.Kubernetes.Cluster:
+    derived_from: tosca.capabilities.Root
+    properties:
+      name:
+        type: string
+
+  kubetos.capabilities.Kubernetes.User:
+    derived_from: tosca.capabilities.Root
+    properties:
+      name:
         type: string
 
 relationship_types:
 
-  kubetos.relationships.ConnectsToAPIServer:
-    derived_from: tosca.relationships.ConnectsTo
-    properties:
-      kubeconfig_path:
-        type: string
-      cluster_name:
-        type: string
-      user:
-        type: string
-      ca_path:
-        type: string
-      cert_path:
-        type: string
-      key_path:
-        type: string
+  kubetos.relationships.Kubelet.UsesRuntime:
+    derived_from: tosca.relationships.HostedOn
     interfaces:
       Configure:
+        type: tosca.interfaces.relationship.Configure
         operations:
-          pre_configure_source:
-            inputs:
-              kubeconfig_path:
-                value: { get_property: [ SELF, kubeconfig_path ] }
-                type: string
-              cluster_name:
-                value: { get_property: [ SELF, cluster_name ] }
-                type: string
-              user:
-                value: { get_property: [ SELF, user ] }
-                type: string
-              ca_path:
-                value: { get_property: [ SELF, ca_path ] }
-                type: string
-              cert_path:
-                value: { get_property: [ SELF, cert_path ] }
-                type: string
-              key_path:
-                value: { get_property: [ SELF, key_path ] }
-                type: string
-              apiserver_address:
-                value: { get_attribute: [ TARGET, host, host, private_address ] }
-                type: string
-              apiserver_port:
-                value: "6443"
-                type: string
-            outputs:
-              kubeconfig_path: [ SOURCE, kubeconfig_path ]
-            implementation: ../ansible/connect-with-kubeconfig--preconfigure-source.yaml
+          pre_configure_target:
+            implementation:
+              primary: ../ansible/kubelet-to-runtime--pre-configure-target.yaml
 
 #  kubetos.relationships.MountsTo:
 #    derived_from: tosca.relationships.AttachesTo
@@ -70,50 +45,6 @@ relationship_types:
 #        type: boolean
 
 node_types:
-
-  kubetos.nodes.Kubelet:
-    derived_from: tosca.nodes.SoftwareComponent
-    capabilities:
-      static_pod_host:
-        type: kubetos.capabilities.StaticPodHost
-    properties:
-      version:
-        type: string
-        default: v1.19.1
-    requirements:
-      - apiserver:
-          capability: tosca.capabilities.Endpoint
-          relationship: kubetos.relationships.ConnectsToAPIServer
-          occurrences: [0, 1]
-      - cri_runtime:
-          capability: kubetos.capabilities.CRI
-          relationship: tosca.relationships.DependsOn
-          occurrences: [1, 1]
-    interfaces:
-      Standard:
-        type: tosca.interfaces.node.lifecycle.Standard
-        inputs:
-          kubelet_version: { value: { get_property: [ SELF, version ] }, type: string }
-        operations:
-          create:
-            implementation:
-              primary: ../ansible/kubelet--create.yaml
-              dependencies:
-                - ../../../roles
-          configure:
-            inputs:
-              ip: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
-              cri_socket: { value: { get_property: [ SELF, cri_runtime, cri, url_path ] }, type: string }
-              kubelet_static_pod_path: { value: { get_property: [ SELF, static_pod_host, path ] }, type: string }
-            implementation:
-              primary: ../ansible/kubelet--configure.yaml
-              dependencies:
-                - ../../../roles
-          start:
-            implementation:
-              primary: ../ansible/kubelet--start.yaml
-              dependencies:
-                - ../../../roles
 
   kubetos.nodes.Kubectl:
     derived_from: tosca.nodes.SoftwareComponent
@@ -133,10 +64,161 @@ node_types:
               dependencies:
                 - ../../../roles
 
-#  kubetos.nodes.Volume:
-#    derived_from: tosca.nodes.Root
-#    capabilities:
-#      volume: tosca.capabilities.Storage
+  kubetos.nodes.Kubernetes.Cluster:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      cluster: kubetos.capabilities.Kubernetes.Cluster
+    attributes:
+      apiserver_address:
+        type: string
+        default: { get_attribute: [ SELF, apiserver, host, host, private_address ] }
+    requirements:
+      - apiserver:
+          capability: tosca.capabilities.Endpoint
+          relationship: tosca.relationships.ConnectsTo
+          occurrences: [0, 1]
+      - ca:
+          capability: kubetos.capabilities.Certificate
+          relationship: tosca.relationships.DependsOn
+
+  kubetos.nodes.Kubernetes.User:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      user: kubetos.capabilities.Kubernetes.User
+    requirements:
+      - cert:
+          capability: kubetos.capabilities.Certificate
+          relationship: tosca.relationships.DependsOn
+
+  kubetos.nodes.Kubeconfig:
+    derived_from: tosca.nodes.SoftwareComponent
+    properties:
+      path:
+        type: string
+    requirements:
+      - cluster:
+          capability: kubetos.capabilities.Kubernetes.Cluster
+          relationship: tosca.relationships.DependsOn
+      - user:
+          capability: kubetos.capabilities.Kubernetes.User
+          relationship: tosca.relationships.DependsOn
+      # impl specific
+      - kubectl:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubectl
+          relationship: tosca.relationships.DependsOn
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          create:
+            inputs:
+              kubeconfig_path:
+                value: { get_property: [ SELF, path ] }
+                type: string
+              user:
+                value: { get_property: [ SELF, user, user, name ] }
+                type: string
+              ca_cert_path:
+                value: { get_property: [ SELF, cluster, ca, cert_path ] }
+                type: string
+              cert_path:
+                value: { get_property: [ SELF, user, cert, cert_path ] }
+                type: string
+              key_path:
+                value: { get_property: [ SELF, user, cert, key_path ] }
+                type: string
+              apiserver_address:
+                value: { get_attribute: [ SELF, cluster, apiserver_address ] }
+                type: string
+              apiserver_port:
+                value: "6443"
+                type: string
+            implementation:
+              primary: ../ansible/kubeconfig--create.yaml
+
+  kubetos.nodes.Kubelet:
+    derived_from: tosca.nodes.SoftwareComponent
+    capabilities:
+      kubelet:
+        type: kubetos.capabilities.Kubelet
+    properties:
+      version:
+        type: string
+        default: v1.19.1
+    requirements:
+      - ca:
+          capability: kubetos.capabilities.Certificate
+          relationship: tosca.relationships.DependsOn
+      - kubeconfig:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubeconfig
+          relationship: tosca.relationships.DependsOn
+          occurrences: [0, 1]
+      - cri_runtime:
+          capability: kubetos.capabilities.CRI
+          relationship: kubetos.relationships.Kubelet.UsesRuntime
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          kubelet_version: { value: { get_property: [ SELF, version ] }, type: string }
+        operations:
+          create:
+            implementation:
+              primary: ../ansible/kubelet--create.yaml
+              dependencies:
+                - ../../../roles
+          configure:
+            inputs:
+              ip: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
+              cri_socket: { value: { get_property: [ SELF, cri_runtime, cri, url_path ] }, type: string }
+              kubelet_static_pod_path: { value: { get_property: [ SELF, kubelet, static_pod_path ] }, type: string }
+              cert_path: { value: { get_property: [ SELF, kubeconfig, user, cert, cert_path ] }, type: string }
+              key_path: { value: { get_property: [ SELF, kubeconfig, user, cert, key_path ] }, type: string }
+              ca_cert_path: { value: { get_property: [ SELF, ca, cert_path ] }, type: string }
+              kubeconfig_path: { value: { get_property: [ SELF, kubeconfig, path ] }, type: string }
+            implementation:
+              primary: ../ansible/kubelet--configure.yaml
+              dependencies:
+                - ../../../roles
+          start:
+            implementation:
+              primary: ../ansible/kubelet--start.yaml
+              dependencies:
+                - ../../../roles
+
+
+  kubetos.nodes.Container.Application:
+    derived_from: tosca.nodes.Container.Application
+    attributes:
+      name:
+        type: string
+      image:
+        type: string
+      version:
+        type: string
+      repository:
+        type: string
+      command:
+        type: list
+        entry_schema:
+          type: string
+    requirements:
+      - host:
+          capability: tosca.capabilities.Compute
+          relationship: tosca.relationships.HostedOn
+      - storage:
+          capability: tosca.capabilities.Storage
+          relationship: tosca.relationships.DependsOn
+      - network:
+          capability: tosca.capabilities.Endpoint
+          relationship: tosca.relationships.DependsOn
+
+  kubetos.nodes.Volume:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      volume: tosca.capabilities.Storage
 
 #  kubetos.nodes.Volume.HostPath:
 #    derived_from: kubetos.nodes.Volume
@@ -164,29 +246,61 @@ node_types:
         type: string
         default: v1.19.1
     requirements:
+      - ca:
+          capability: kubetos.capabilities.Certificate
+          relationship: tosca.relationships.DependsOn
+      - cert:
+          capability: kubetos.capabilities.Certificate
+          relationship: tosca.relationships.DependsOn
+      - kubelet_client_cert:
+          capability: kubetos.capabilities.Certificate
+          relationship: tosca.relationships.DependsOn
+      - service_account_cert:
+          capability: kubetos.capabilities.Certificate
+          relationship: tosca.relationships.DependsOn
       - etcd:
           capability: kubetos.capabilities.Etcd.Endpoint.Access
           relationship: tosca.relationships.ConnectsTo
       - host:
-          capability: kubetos.capabilities.StaticPodHost
+          capability: kubetos.capabilities.Kubelet
           relationship: tosca.relationships.HostedOn
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
-          static_pod_path: { value: { get_property: [ SELF, host, static_pod_host, path ] }, type: string }
+          ca_cert_path:
+            value: { get_property: [ SELF, ca, cert_path ] }
+            type: string
+          cert_path:
+            value: { get_property: [ SELF, cert, cert_path ] }
+            type: string
+          key_path:
+            value: { get_property: [ SELF, cert, key_path ] }
+            type: string
+          sa_cert_path:
+            value: { get_property: [ SELF, service_account_cert, cert_path ] }
+            type: string
+          sa_key_path:
+            value: { get_property: [ SELF, service_account_cert, key_path ] }
+            type: string
+          kubelet_client_cert_path:
+            value: { get_property: [ SELF, kubelet_client_cert, cert_path ] }
+            type: string
+          kubelet_client_key_path:
+            value: { get_property: [ SELF, kubelet_client_cert, key_path ] }
+            type: string
+          etcd_address: { value: { get_attribute: [ SELF, etcd, host, private_address ] }, type: string }
+          etcd_port: { value: { get_property: [ SELF, etcd, access_address, port ] }, type: string }
           kube_version: { value: { get_property: [ SELF, version ] }, type: string }
           private_address: { value: { get_attribute: [ SELF, host, host, private_address ] }, type: string }
           public_address: { value: { get_attribute: [ SELF, host, host, public_address ] }, type: string }
-          etcd_address: { value: { get_attribute: [ SELF, etcd, host, private_address ] }, type: string }
-          etcd_port: { value: { get_property: [ SELF, etcd, access_address, port ] }, type: string }
+          static_pod_path: { value: { get_property: [ SELF, host, kubelet, static_pod_path ] }, type: string }
         operations:
           start:
             implementation:
               primary: ../ansible/kube-apiserver--start.yaml
               dependencies:
                 - ../ansible/files/kube-apiserver.yaml.j2
-                - ../../../certs
 
   kubetos.nodes.Kube.Scheduler:
     derived_from: tosca.nodes.Root
@@ -196,33 +310,30 @@ node_types:
         default: v1.19.1
       config_path:
         type: string
-    attributes:
-      kubeconfig_path:
-        type: string
     requirements:
-      - apiserver:
-          capability: tosca.capabilities.Endpoint
-          relationship: kubetos.relationships.ConnectsToAPIServer
+      - kubeconfig:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubeconfig
+          relationship: tosca.relationships.DependsOn
       - host:
-          capability: kubetos.capabilities.StaticPodHost
+          capability: kubetos.capabilities.Kubelet
           relationship: tosca.relationships.HostedOn
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
-          static_pod_path: { value: { get_property: [ SELF, host, static_pod_host, path ] }, type: string }
+          static_pod_path: { value: { get_property: [ SELF, host, kubelet, static_pod_path ] }, type: string }
           kube_version: { value: { get_property: [ SELF, version ] }, type: string }
           config_path: { value: { get_property: [ SELF, config_path ] }, type: string }
         operations:
           start:
             inputs:
-              kubeconfig_path: { value: { get_attribute: [ SELF, kubeconfig_path ] }, type: string }
+              kubeconfig_path: { value: { get_property: [ SELF, kubeconfig, path ] }, type: string }
             implementation:
               primary: ../ansible/kube-scheduler--start.yaml
               dependencies:
                 - ../ansible/files/kube-scheduler.yaml.j2
                 - ../ansible/files/kube-scheduler.config.yaml.j2
-                - ../../../certs
 
   kubetos.nodes.Kube.ControllerManager:
     derived_from: tosca.nodes.Root
@@ -234,30 +345,43 @@ node_types:
         type: string
       service_cidr:
         type: string
-    attributes:
-      kubeconfig_path:
-        type: string
     requirements:
-      - apiserver:
-          capability: tosca.capabilities.Endpoint
-          relationship: kubetos.relationships.ConnectsToAPIServer
+      - ca:
+          capability: kubetos.capabilities.Certificate
+          relationship: tosca.relationships.DependsOn
+      - service_account_cert:
+          capability: kubetos.capabilities.Certificate
+          relationship: tosca.relationships.DependsOn
+      - kubeconfig:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubeconfig
+          relationship: tosca.relationships.DependsOn
       - host:
-          capability: kubetos.capabilities.StaticPodHost
+          capability: kubetos.capabilities.Kubelet
           relationship: tosca.relationships.HostedOn
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
-          static_pod_path: { value: { get_property: [ SELF, host, static_pod_host, path ] }, type: string }
+          static_pod_path: { value: { get_property: [ SELF, host, kubelet, static_pod_path ] }, type: string }
           kube_version: { value: { get_property: [ SELF, version ] }, type: string }
           cluster_cidr: { value: { get_property: [ SELF, cluster_cidr ] }, type: string }
           service_cidr: { value: { get_property: [ SELF, service_cidr ] }, type: string }
+          ca_cert_path:
+            value: { get_property: [ SELF, ca, cert_path ] }
+            type: string
+          ca_key_path:
+            value: { get_property: [ SELF, ca, key_path ] }
+            type: string
+          sa_key_path:
+            value: { get_property: [ SELF, service_account_cert, key_path ] }
+            type: string
         operations:
           start:
             inputs:
-              kubeconfig_path: { value: { get_attribute: [ SELF, kubeconfig_path ] }, type: string }
+              kubeconfig_path: { value: { get_property: [ SELF, kubeconfig, path ] }, type: string }
             implementation:
               primary: ../ansible/kube-controller-manager--start.yaml
               dependencies:
                 - ../ansible/files/kube-controller-manager.yaml.j2
-                - ../../../certs
+

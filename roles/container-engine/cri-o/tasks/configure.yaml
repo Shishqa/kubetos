@@ -136,6 +136,13 @@
     - 100-crio-bridge.conf
     - 200-loopback.conf
 
+- name: Copy seccomp.json
+  copy:
+    src: seccomp.json
+    dest: /etc/crio/seccomp.json
+    mode: 0644
+  notify: restart crio
+
 - name: Copy mounts.conf
   copy:
     src: mounts.conf

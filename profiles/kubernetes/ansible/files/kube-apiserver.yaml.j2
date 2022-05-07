@@ -19,7 +19,7 @@ spec:
     - --apiserver-count=1
     - --authorization-mode=Node,RBAC
     - --bind-address=0.0.0.0
-    - --client-ca-file=/etc/kubernetes/certs/ca.pem
+    - --client-ca-file={{ ca_cert_path }}
     - --default-not-ready-toleration-seconds=300
     - --default-unreachable-toleration-seconds=300
     - --enable-admission-plugins=NodeRestriction
@@ -28,23 +28,27 @@ spec:
     - --endpoint-reconciler-type=lease
     - --etcd-servers=http://{{ etcd_address }}:{{ etcd_port }}
     - --event-ttl=1h0m0s
+    - --kubelet-certificate-authority={{ ca_cert_path }}
+    - --kubelet-client-certificate={{ kubelet_client_cert_path }}
+    - --kubelet-client-key={{ kubelet_client_key_path }}
     - --kubelet-preferred-address-types=InternalDNS,InternalIP,Hostname,ExternalDNS,ExternalIP
     - --profiling=False
     - --request-timeout=1m0s
     - --requestheader-allowed-names=front-proxy-client
+    - --requestheader-client-ca-file={{ ca_cert_path }}
     - --requestheader-extra-headers-prefix=X-Remote-Extra-
     - --requestheader-group-headers=X-Remote-Group
     - --requestheader-username-headers=X-Remote-User
     - --runtime-config=authorization.k8s.io/v1beta1=true
     - --secure-port=6443
-    - --service-account-key-file=/etc/kubernetes/certs/kubernetes.pem
-    - --service-account-signing-key-file=/etc/kubernetes/certs/kubernetes-key.pem
+    - --service-account-key-file={{ sa_cert_path }}
+    - --service-account-signing-key-file={{ sa_key_path }}
     - --service-account-issuer=https://{{ public_address }}:6443
     - --service-cluster-ip-range=10.233.0.0/18
     - --service-node-port-range=30000-32767
     - --storage-backend=etcd3
-    - --tls-cert-file=/etc/kubernetes/certs/kubernetes.pem
-    - --tls-private-key-file=/etc/kubernetes/certs/kubernetes-key.pem
+    - --tls-cert-file={{ cert_path }}
+    - --tls-private-key-file={{ key_path }}
     name: kube-apiserver
     image: k8s.gcr.io/kube-apiserver:{{ kube_version }}
     imagePullPolicy: IfNotPresent
@@ -52,13 +56,56 @@ spec:
       requests:
         cpu: 250m
     volumeMounts:
-    - mountPath: /etc/kubernetes/certs
-      name: ca-certs
+    - mountPath: {{ cert_path }}
+      name: cert
+      readOnly: true
+    - mountPath: {{ key_path }}
+      name: key
+      readOnly: true
+    - mountPath: {{ sa_cert_path }}
+      name: sa-cert
+      readOnly: true
+    - mountPath: {{ sa_key_path }}
+      name: sa-key
+      readOnly: true
+    - mountPath: {{ ca_cert_path }}
+      name: ca-cert
+      readOnly: true
+    - mountPath: {{ kubelet_client_cert_path }}
+      name: kubelet-client-cert
+      readOnly: true
+    - mountPath: {{ kubelet_client_key_path }}
+      name: kubelet-client-key
       readOnly: true
   hostNetwork: true
+  priorityClassName: system-node-critical
   volumes:
   - hostPath:
-      path: /etc/kubernetes/certs
-      type: DirectoryOrCreate
-    name: ca-certs
+      path: {{ cert_path }}
+      type: FileOrCreate
+    name: cert
+  - hostPath:
+      path: {{ key_path }}
+      type: FileOrCreate
+    name: key
+  - hostPath:
+      path: {{ sa_cert_path }}
+      type: FileOrCreate
+    name: sa-cert
+  - hostPath:
+      path: {{ sa_key_path }}
+      type: FileOrCreate
+    name: sa-key
+  - hostPath:
+      path: {{ ca_cert_path }}
+      type: FileOrCreate
+    name: ca-cert
+  - hostPath:
+      path: {{ kubelet_client_cert_path }}
+      type: FileOrCreate
+    name: kubelet-client-cert
+  - hostPath:
+      path: {{ kubelet_client_key_path }}
+      type: FileOrCreate
+    name: kubelet-client-key
 status: {}

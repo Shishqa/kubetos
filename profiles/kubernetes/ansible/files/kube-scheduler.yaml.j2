@@ -49,6 +49,7 @@ spec:
       name: kubescheduler-config
       readOnly: true
   hostNetwork: true
+  priorityClassName: system-node-critical
   volumes:
   - hostPath:
       path: {{ kubeconfig_path }}

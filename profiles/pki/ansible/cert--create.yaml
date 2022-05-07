@@ -1,0 +1,62 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Make sure directories exists
+      file:
+        name: "/tmp/cfssl/{{ tosca_id }}"
+        state: directory
+        mode: 0644
+
+    - name: Create config
+      copy:
+        src: ca-config.json
+        dest: "/tmp/cfssl/{{ tosca_id }}/ca-config.json"
+        mode: 0644
+
+    - name: Write ca cert
+      copy:
+        dest: "/tmp/cfssl/{{ tosca_id }}/ca.pem"
+        content: "{{ ca_cert }}"
+        mode: 0644
+
+    - name: Write ca key
+      copy:
+        dest: "/tmp/cfssl/{{ tosca_id }}/ca-key.pem"
+        content: "{{ ca_key }}"
+        mode: 0644
+
+    - name: Create cert csr
+      template:
+        src: csr.json.j2
+        dest: "/tmp/cfssl/{{ tosca_id }}/csr.json"
+        mode: 0644
+
+    - name: sign cert
+      shell:
+        cmd: >-
+          cfssl gencert \
+            -ca=ca.pem \
+            -ca-key=ca-key.pem \
+            -config=ca-config.json \
+            {%- if hostnames != [] -%}-hostname={{ hostnames | join(',') }} \{%- endif -%}
+            -profile=default \
+            csr.json | cfssljson -bare cert
+        chdir: "/tmp/cfssl/{{ tosca_id }}"
+
+    - name: get cert
+      shell: "cat /tmp/cfssl/{{ tosca_id }}/cert.pem"
+      register: cert
+
+    - name: get key
+      shell: "cat /tmp/cfssl/{{ tosca_id }}/cert-key.pem"
+      register: key
+
+    - name: return cert
+      set_stats:
+        data:
+          cert: "{{ cert.stdout }}"
+          key: "{{ key.stdout }}"

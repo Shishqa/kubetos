@@ -7,6 +7,8 @@ authentication:
     enabled: false
   webhook:
     enabled: false
+  x509:
+    clientCAFile: {{ ca_cert_path }}
 authorization:
   mode: AlwaysAllow
 {% if kubelet_enforce_node_allocatable is defined and kubelet_enforce_node_allocatable != "\"\"" %}
@@ -47,6 +49,8 @@ tlsCipherSuites:
 - {{ tls }}
 {% endfor %}
 {% endif %}
+tlsCertFile: {{ cert_path }}
+tlsPrivateKeyFile: {{ key_path }}
 {% if kubelet_version is version('v1.21.0', '>=') %}
 shutdownGracePeriod: {{ kubelet_shutdown_grace_period }}
 shutdownGracePeriodCriticalPods: {{ kubelet_shutdown_grace_period_critical_pods }}
