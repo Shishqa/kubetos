@@ -1,38 +1,24 @@
 - hosts: localhost
   connection: local
   gather_facts: no
-  vars:
-    ansible_become: yes
   tasks:
-
-    - name: Make sure directories exists
-      file:
-        name: "/tmp/cfssl/{{ tosca_id }}"
-        state: directory
-        mode: 0644
-
-    - name: Create config
-      copy:
-        src: ca-config.json
-        dest: "/tmp/cfssl/{{ tosca_id }}/ca-config.json"
-        mode: 0644
 
     - name: Write ca cert
       copy:
-        dest: "/tmp/cfssl/{{ tosca_id }}/ca.pem"
+        dest: ca.pem
         content: "{{ ca_cert }}"
         mode: 0644
 
     - name: Write ca key
       copy:
-        dest: "/tmp/cfssl/{{ tosca_id }}/ca-key.pem"
+        dest: ca-key.pem
         content: "{{ ca_key }}"
         mode: 0644
 
     - name: Create cert csr
       template:
         src: csr.json.j2
-        dest: "/tmp/cfssl/{{ tosca_id }}/csr.json"
+        dest: csr.json
         mode: 0644
 
     - name: sign cert
@@ -45,14 +31,13 @@
             {%- if hostnames != [] -%}-hostname={{ hostnames | join(',') }} \{%- endif -%}
             -profile=default \
             csr.json | cfssljson -bare cert
-        chdir: "/tmp/cfssl/{{ tosca_id }}"
 
     - name: get cert
-      shell: "cat /tmp/cfssl/{{ tosca_id }}/cert.pem"
+      shell: cat cert.pem
       register: cert
 
     - name: get key
-      shell: "cat /tmp/cfssl/{{ tosca_id }}/cert-key.pem"
+      shell: cat cert-key.pem
       register: key
 
     - name: return cert
