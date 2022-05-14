@@ -43,8 +43,7 @@ relationship_types:
                 type: map
             outputs:
               new_list: [ SOURCE, runtimes ]
-            implementation:
-              primary: ../../add-to-list.yaml
+            implementation: ../../utils/add-to-list.yaml
 
 node_types:
 
