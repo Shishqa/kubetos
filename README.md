@@ -7,7 +7,10 @@ A TOSCA framework for deploying Kubernetes.
 ## Getting started
 
 1. Create a python [`virtualenv`](https://virtualenv.pypa.io/en/latest/)
-and install required packages. Also install [`cfssl`](https://github.com/cloudflare/cfssl).
+and install required packages. Also install dependencies:
+
+  - [cfssl](https://github.com/cloudflare/cfssl)
+  - kubectl
 
 ```bash
 pip install -r requirements.txt
@@ -22,8 +25,10 @@ source configs/cloud.rc
 source configs/opera.sh
 ```
 
-4. Edit [`service.yaml`](./service.yaml) topology template (__TODO:__ use topology template inputs) and deploy it with [Opera](https://github.com/xlab-si/xopera-opera) orchestrator
+4. Edit [`cluster.yaml`](./cluster.yaml) topology template and deploy it with [Opera](https://github.com/xlab-si/xopera-opera) orchestrator
 
 ```bash
-opera deploy service.yaml
+opera deploy cluster.yaml -w 10
 ```
+
+> in case if opera fails because of `.kube/config.lock` file, refer to [#2](https://github.com/Shishqa/kubetos/issues/2)

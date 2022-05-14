@@ -5,7 +5,7 @@ imports:
 
 capability_types:
 
-  kubetos.capabilities.OCI.Runtime:
+  kubetos.capabilities.OCI.Plugin:
     derived_from: tosca.capabilities.Node
     properties:
       name:
@@ -50,53 +50,61 @@ node_types:
   kubetos.nodes.Runc:
     derived_from: tosca.nodes.SoftwareComponent
     capabilities:
-      oci: kubetos.capabilities.OCI.Runtime
+      oci: kubetos.capabilities.OCI.Plugin
     properties:
-      version:
-        type: string
-        default: "v1.1.1"
+      component_version:
+        type: version
+        default: 1.1.1
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
-          runc_version: { value: { get_property: [ SELF, version ] }, type: string }
+          runc_version: { value: { get_property: [ SELF, component_version ] }, type: string }
         operations:
           create:
-            implementation:
-              primary: ./ansible/runc--create.yaml
+            implementation: ansible/runc--create.yaml
 
   kubetos.nodes.Kata:
     derived_from: tosca.nodes.SoftwareComponent
     capabilities:
-      oci: kubetos.capabilities.OCI.Runtime
+      oci: kubetos.capabilities.OCI.Plugin
     properties:
-      version:
-        type: string
-        default: "2.1.0"
+      component_version:
+        type: version
+        default: 2.1.0
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
-          kata_containers_version: { value: { get_property: [ SELF, version ] }, type: string }
+          kata_containers_version:
+            value: { get_property: [ SELF, component_version ] }
+            type: string
         operations:
           create:
             implementation:
-              primary: ./ansible/kata--create.yaml
+              primary: ansible/kata--create.yaml
               dependencies:
-                - ../../roles
+                - file: ansible/roles/kata
+                  type: tosca.artifacts.File
+                  deploy_path: roles/kata
+                - file: ../../utils/roles/download
+                  type: tosca.artifacts.File
+                  deploy_path: roles/download
           configure:
             implementation:
-              primary: ./ansible/kata--configure.yaml
+              primary: ansible/kata--configure.yaml
               dependencies:
-                - ../../roles
+                - file: ansible/roles/kata
+                  type: tosca.artifacts.File
+                  deploy_path: roles/kata
 
   kubetos.nodes.CRI-O:
     derived_from: tosca.nodes.SoftwareComponent
     capabilities:
       cri: kubetos.capabilities.CRI
     properties:
-      version:
-        type: string
+      component_version:
+        type: version
         default: "1.21"
     attributes:
       runtimes:
@@ -104,18 +112,17 @@ node_types:
         default: []
     requirements:
       - oci_runtime:
-          capability: kubetos.capabilities.OCI.Runtime
+          capability: kubetos.capabilities.OCI.Plugin
           relationship: kubetos.relationships.OCI.Plugin.CRI-O
-          occurrences: [ 0, UNBOUNDED ]
+          occurrences: [ 1, UNBOUNDED ]
       - cni:
           capability: kubetos.capabilities.CNI
           relationship: tosca.relationships.DependsOn
-          occurrences: [ 1, 1 ]
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
         inputs:
-          crio_version: { value: { get_property: [ SELF, version ] }, type: string }
+          crio_version: { value: { get_property: [ SELF, component_version ] }, type: string }
         operations:
           configure:
             inputs:
@@ -123,16 +130,18 @@ node_types:
               cni_bin_dir: { value: { get_property: [ SELF, cni, cni, binary_dir ] }, type: string }
               cni_conf_dir: { value: { get_property: [ SELF, cni, cni, config_dir ] }, type: string }
             implementation:
-              primary: ./ansible/cri-o--configure.yaml
+              primary: ansible/cri-o--configure.yaml
               dependencies:
-                - ../../roles
+                - file: ansible/roles/cri-o
+                  type: tosca.artifacts.File
+                  deploy_path: roles/cri-o
 
   kubetos.nodes.Crictl:
     derived_from: tosca.nodes.SoftwareComponent
     properties:
-      version:
-        type: string
-        default: "1.21"
+      component_version:
+        type: version
+        default: 1.21.0
     requirements:
       - cri_runtime:
           capability: kubetos.capabilities.CRI
@@ -143,9 +152,16 @@ node_types:
         operations:
           create:
             inputs:
-              crictl_version: { value: { get_property: [ SELF, version ] }, type: string }
+              crictl_version:
+                value: { concat: [ "v", { get_property: [ SELF, component_version ] } ] }
+                type: string
               cri_socket: { value: { get_property: [ SELF, cri_runtime, cri, url_path ] }, type: string }
             implementation:
-              primary: ./ansible/crictl--create.yaml
+              primary: ansible/crictl--create.yaml
               dependencies:
-                - ../../roles
+                - file: ansible/roles/crictl
+                  type: tosca.artifacts.File
+                  deploy_path: roles/crictl
+                - file: ../../utils/roles/download
+                  type: tosca.artifacts.File
+                  deploy_path: roles/download

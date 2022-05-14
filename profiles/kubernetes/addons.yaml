@@ -1,0 +1,134 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+imports:
+  - cluster.yaml
+
+node_types:
+
+  kubetos.nodes.Kube.Proxy:
+    derived_from: tosca.nodes.Root
+    properties:
+      component_version:
+        type: version
+        default: 1.21.0
+      cluster_cidr:
+        type: string
+    attributes:
+      deploy_kubeconfig_path:
+        type: string
+    requirements:
+      - kubectl:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubectl
+          relationship: tosca.relationships.HostedOn
+      - deploy_kubeconfig:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubeconfig
+          relationship: kubetos.relationships.UsesKubeconfig
+      - kubeconfig:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubeconfig
+          relationship: tosca.relationships.DependsOn
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          kube_version:
+            value: { concat: [ "v", { get_property: [ SELF, component_version ] } ] }
+            type: string
+          cluster_cidr: { value: { get_property: [ SELF, cluster_cidr ] }, type: string }
+        operations:
+          start:
+            inputs:
+              kubeconfig:
+                value: { get_attribute: [ SELF, kubeconfig, conf ] }
+                type: string
+              deploy_kubeconfig_path: { value: { get_attribute: [ SELF, deploy_kubeconfig_path ] }, type: string }
+            implementation:
+              primary: ansible/kube-proxy--start.yaml
+
+  kubetos.nodes.CoreDNS:
+    derived_from: tosca.nodes.Root
+    properties:
+      component_version:
+        type: version
+        default: 1.9.2
+    attributes:
+      dns_ip:
+        type: string
+      deploy_kubeconfig_path:
+        type: string
+    requirements:
+      - kubectl:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubectl
+          relationship: tosca.relationships.HostedOn
+      - deploy_kubeconfig:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubeconfig
+          relationship: kubetos.relationships.UsesKubeconfig
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          coredns_version:
+            value: { get_property: [ SELF, component_version ] }
+            type: string
+          dns_ip:
+            value: { get_attribute: [ SELF, dns_ip ] }
+            type: string
+        operations:
+          start:
+            inputs:
+              deploy_kubeconfig_path: { value: { get_attribute: [ SELF, deploy_kubeconfig_path ] }, type: string }
+            implementation:
+              primary: ansible/coredns--start.yaml
+
+  kubetos.nodes.Flannel:
+    derived_from: tosca.nodes.Root
+    properties:
+      component_version:
+        type: version
+        default: 0.17.0
+      pod_cidr:
+        type: string
+    attributes:
+      deploy_kubeconfig_path:
+        type: string
+    requirements:
+      - kubectl:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubectl
+          relationship: tosca.relationships.HostedOn
+      - deploy_kubeconfig:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Kubeconfig
+          relationship: kubetos.relationships.UsesKubeconfig
+      - cni:
+          capability: kubetos.capabilities.CNI
+          relationship: tosca.relationships.DependsOn
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          flannel_version:
+            value: { concat: [ "v", { get_property: [ SELF, component_version ] } ] }
+            type: string
+          pod_cidr:
+            value: { get_property: [ SELF, pod_cidr ] }
+            type: string
+          cni_version:
+            value: { concat: [ "v", { get_property: [ SELF, cni, component_version ] } ] }
+            type: string
+          cni_bin_dir:
+            value: { get_property: [ SELF, cni, cni, binary_dir ] }
+            type: string
+          cni_conf_dir:
+            value: { get_property: [ SELF, cni, cni, config_dir ] }
+            type: string
+        operations:
+          start:
+            inputs:
+              deploy_kubeconfig_path: { value: { get_attribute: [ SELF, deploy_kubeconfig_path ] }, type: string }
+            implementation:
+              primary: ansible/flannel--start.yaml

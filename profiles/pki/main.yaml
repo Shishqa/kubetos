@@ -1,0 +1,137 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+relationship_types:
+
+  kubetos.relationships.UsesCertificate:
+    derived_from: tosca.relationships.DependsOn
+    properties:
+      cert_path:
+        type: string
+      key_path:
+        type: string
+    interfaces:
+      Configure:
+        operations:
+          pre_configure_source:
+            inputs:
+              cert:
+                value: { get_attribute: [ TARGET, cert ] }
+                type: string
+              key:
+                value: { get_attribute: [ TARGET, key ] }
+                type: string
+              cert_path:
+                value: { get_property: [ SELF, cert_path ] }
+                type: string
+              key_path:
+                value: { get_property: [ SELF, key_path ] }
+                type: string
+            implementation: ansible/cert-mirror--create.yaml
+
+capability_types:
+
+  kubetos.capabilities.Certificate:
+    derived_from: tosca.capabilities.Root
+    # FIXME: xopera does not support property assignments with
+    # intrinsic functions in it. Move cert properties here when
+    # this problem is solved
+
+  kubetos.capabilities.CertificateAuthority:
+    derived_from: tosca.capabilities.Root
+
+node_types:
+
+  kubetos.nodes.Certificate:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      cert: kubetos.capabilities.Certificate
+    properties:
+      common_name:
+        type: string
+      organisation:
+        type: string
+      hostnames:
+        type: list
+        entry_schema:
+          type: string
+        default: []
+    attributes:
+      cert:
+        type: string
+      key:
+        type: string
+    requirements:
+      - ca:
+          capability: kubetos.capabilities.CertificateAuthority
+          relationship: tosca.relationships.DependsOn
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          create:
+            inputs:
+              common_name:
+                value: { get_property: [ SELF, common_name ] }
+                type: string
+              organisation:
+                value: { get_property: [ SELF, organisation ] }
+                type: string
+              hostnames:
+                value: { get_property: [ SELF, hostnames ] }
+                type: list
+              ca_cert:
+                value: { get_attribute: [ SELF, ca, cert ] }
+                type: string
+              ca_key:
+                value: { get_attribute: [ SELF, ca, key ] }
+                type: string
+              tosca_id:
+                value: { get_attribute: [ SELF, tosca_id ] }
+                type: string
+            outputs:
+              cert: [ SELF, cert ]
+              key: [ SELF, key ]
+            implementation:
+              primary: ./ansible/cert--create.yaml
+              dependencies:
+                - ./ansible/files/csr.json.j2
+                - ./ansible/files/ca-config.json
+
+  kubetos.nodes.CertificateAuthority:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      ca: kubetos.capabilities.CertificateAuthority
+      cert: kubetos.capabilities.Certificate
+    properties:
+      common_name:
+        type: string
+      organisation:
+        type: string
+    attributes:
+      cert:
+        type: string
+      key:
+        type: string
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          create:
+            inputs:
+              common_name:
+                value: { get_property: [ SELF, common_name ] }
+                type: string
+              organisation:
+                value: { get_property: [ SELF, organisation ] }
+                type: string
+              tosca_id:
+                value: { get_attribute: [ SELF, tosca_id ] }
+                type: string
+            outputs:
+              cert: [ SELF, cert ]
+              key: [ SELF, key ]
+            implementation:
+              primary: ./ansible/ca--create.yaml
+              dependencies:
+                - ./ansible/files/csr.json.j2
+

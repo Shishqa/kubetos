@@ -18,3 +18,9 @@
         src: kube-apiserver.yaml.j2
         dest: "{{ static_pod_path }}/kube-apiserver.yaml"
         mode: 0644
+
+    - name: Wait for k8s apiserver
+      wait_for:
+        host: "{{ public_address }}"
+        port: "6443"
+        timeout: 180

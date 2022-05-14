@@ -7,5 +7,5 @@
 
     - name: Create Kata
       include_role:
-        name: container-engine/kata
+        name: kata
         tasks_from: create

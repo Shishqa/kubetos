@@ -7,4 +7,4 @@
 
     - name: Create Crictl
       include_role:
-        name: container-engine/crictl
+        name: crictl

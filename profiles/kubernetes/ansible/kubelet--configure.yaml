@@ -7,5 +7,5 @@
 
     - name: Create Kubelet
       include_role:
-        name: kubernetes/kubelet
+        name: kubelet
         tasks_from: configure

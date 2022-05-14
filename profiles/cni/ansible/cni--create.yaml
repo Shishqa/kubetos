@@ -7,5 +7,5 @@
 
     - name: Create CNI
       include_role:
-        name: network_plugin/cni
+        name: cni
         tasks_from: create

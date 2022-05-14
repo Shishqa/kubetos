@@ -6,7 +6,7 @@
     - name: Create security group
       os_security_group:
         state: present
-        name: "{{ name }}"
+        name: "{{ security_group }}"
         description: "{{ description }}"
       register: sg_info
 

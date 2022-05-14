@@ -3,9 +3,10 @@
   gather_facts: yes
   vars:
     ansible_become: yes
+    ansible_timeout: 60
   tasks:
 
     - name: Configure CRI-O
       include_role:
-        name: container-engine/cri-o
+        name: cri-o
         tasks_from: configure

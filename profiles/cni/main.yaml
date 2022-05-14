@@ -16,12 +16,12 @@ node_types:
 
   kubetos.nodes.CNI:
     derived_from: tosca.nodes.SoftwareComponent
-    properties:
-      version:
-        type: string
-        default: v0.9.1
     capabilities:
       cni: kubetos.capabilities.CNI
+    properties:
+      component_version:
+        type: version
+        default: 1.0.1
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
@@ -30,17 +30,24 @@ node_types:
             inputs:
               cni_binary_dir: { value: { get_property: [ SELF, cni, binary_dir ] }, type: string }
               cni_config_dir: { value: { get_property: [ SELF, cni, config_dir ] }, type: string }
-              cni_version: { value: { get_property: [ SELF, version ] }, type: string }
+              cni_version:
+                value: { concat: [ "v", { get_property: [ SELF, component_version ] } ] }
+                type: string
             implementation:
-              primary: ./ansible/cni--create.yaml
+              primary: ansible/cni--create.yaml
               dependencies:
-                - ../../roles
+                - file: ansible/roles/cni
+                  type: tosca.artifacts.File
+                  deploy_path: roles/cni
+                - file: ../../utils/roles/download
+                  type: tosca.artifacts.File
+                  deploy_path: roles/download
 
   kubetos.nodes.CNI.Plugin:
     derived_from: tosca.nodes.SoftwareComponent
     properties:
       cni_version:
-        type: string
+        type: version
       name:
         type: string
       type:
@@ -55,16 +62,11 @@ node_types:
     properties:
       type:
         type: string
-        required: false
         default: bridge
         constraints:
           - valid_values: [ bridge ]
-      pod_cidr:
+      subnet:
         type: string
-    requirements:
-      - cni:
-          capability: kubetos.capabilities.CNI
-          relationship: tosca.relationships.DependsOn
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
@@ -74,25 +76,20 @@ node_types:
               conf_name: { value: { get_property: [ SELF, name ] }, type: string }
               cni_version: { value: { get_property: [ SELF, cni_version ] }, type: string }
               cni_config_dir: { value: { get_property: [ SELF, cni, cni, config_dir ] }, type: string }
-              pod_cidr: { value: { get_property: [ SELF, pod_cidr ] }, type: string }
+              subnet: { value: { get_property: [ SELF, subnet ] }, type: string }
             implementation:
-              primary: ./ansible/bridge--create.yaml
+              primary: ansible/bridge--create.yaml
               dependencies:
-                - ./ansible/files/bridge.conf.j2
+                - ansible/files/bridge.conf.j2
 
   kubetos.nodes.CNI.Plugin.Loopback:
     derived_from: kubetos.nodes.CNI.Plugin
     properties:
       type:
         type: string
-        required: false
         default: loopback
         constraints:
           - valid_values: [ loopback ]
-    requirements:
-      - cni:
-          capability: kubetos.capabilities.CNI
-          relationship: tosca.relationships.DependsOn
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
@@ -103,6 +100,6 @@ node_types:
               cni_version: { value: { get_property: [ SELF, cni_version ] }, type: string }
               cni_config_dir: { value: { get_property: [ SELF, cni, cni, config_dir ] }, type: string }
             implementation:
-              primary: ./ansible/loopback--create.yaml
+              primary: ansible/loopback--create.yaml
               dependencies:
-                - ./ansible/files/loopback.conf.j2
+                - ansible/files/loopback.conf.j2

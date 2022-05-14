@@ -16,7 +16,7 @@ spec:
     - --advertise-address={{ private_address }}
     - --allow-privileged=true
     - --anonymous-auth=True
-    - --apiserver-count=1
+    - --apiserver-count={{ apiserver_count }}
     - --authorization-mode=Node,RBAC
     - --bind-address=0.0.0.0
     - --client-ca-file={{ ca_cert_path }}
@@ -26,7 +26,8 @@ spec:
     - --enable-aggregator-routing=False
     - --enable-bootstrap-token-auth=true
     - --endpoint-reconciler-type=lease
-    - --etcd-servers={%- for item in etcd_peers -%}http://{{ item.access_address }}:{{ item.access_port }}{% if not loop.last %},{% endif %}{%- endfor -%}
+    - --etcd-servers={% for item in etcd_peers %}http://{{ item.access_address }}:{{ item.access_port }}{%- if not loop.last -%},{%- endif -%}{% endfor %}
+
     - --event-ttl=1h0m0s
     - --kubelet-certificate-authority={{ ca_cert_path }}
     - --kubelet-client-certificate={{ kubelet_client_cert_path }}
@@ -44,7 +45,7 @@ spec:
     - --service-account-key-file={{ sa_cert_path }}
     - --service-account-signing-key-file={{ sa_key_path }}
     - --service-account-issuer=https://{{ public_address }}:6443
-    - --service-cluster-ip-range=10.233.0.0/18
+    - --service-cluster-ip-range={{ service_cidr }}
     - --service-node-port-range=30000-32767
     - --storage-backend=etcd3
     - --tls-cert-file={{ cert_path }}

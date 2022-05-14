@@ -7,5 +7,5 @@
 
     - name: Create Kubectl
       include_role:
-        name: kubernetes/kubectl
+        name: kubectl
         tasks_from: create

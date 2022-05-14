@@ -1,29 +1,33 @@
 ---
 - hosts: all
-  gather_facts: yes
+  gather_facts: no
   tasks:
 
     - name: Create instance
       os_server:
         state: present
-        name: "{{ vm_name }}"
+        name: "{{ compute_name }}"
         image: "{{ image }}"
         flavor: "{{ flavor }}"
         key_name: "{{ key_name }}"
         network: "{{ network }}"
         boot_from_volume: false
-        security_groups: "{{ security_groups }}"
+        security_groups: "{{ security_groups | join(',') }}"
         auto_ip: false
       register: server_info
 
     - name: Acquire floating IPs for instance
       os_floating_ip:
         state: present
-        reuse: yes
         server: "{{ server_info.server.id }}"
         network: "{{ floating_ip_pool }}"
         wait: yes
+      register: result
       when: server_info.server.public_v4 == ''
+
+    - name: debug
+      debug:
+        var: result
 
     - name: Retrieve openstack facts
       os_server_info:
@@ -44,10 +48,8 @@
         groups: vms
         ansible_host: "{{ server_facts.openstack_servers[0].public_v4 }}"
         ansible_user: ubuntu
-        ansible_ssh_private_key_file: "{{ ssh_key }}"
+        ansible_ssh_private_key_file: "{{ opera_ssh_private_key_file }}"
         ansible_ssh_common_args: >
-          -o IdentitiesOnly=yes
-          -o BatchMode=yes
           -o UserKnownHostsFile=/dev/null
           -o StrictHostKeyChecking=no
 
@@ -56,6 +58,6 @@
   tasks:
     - name: Wait for ssh to wake up
       wait_for_connection:
-        delay: 10
-        sleep: 5
+        delay: 5
+        sleep: 2
         timeout: 120
