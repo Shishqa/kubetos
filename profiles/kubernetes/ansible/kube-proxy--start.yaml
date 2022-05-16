@@ -5,42 +5,6 @@
     ansible_become: yes
   tasks:
 
-    - name: Modprobe Kernel Module for IPVS
-      modprobe:
-        name: "{{ item }}"
-        state: present
-      with_items:
-        - ip_vs
-        - ip_vs_rr
-        - ip_vs_wrr
-        - ip_vs_sh
-      tags:
-        - kube-proxy
-
-    - name: Modprobe nf_conntrack_ipv4
-      modprobe:
-        name: nf_conntrack_ipv4
-        state: present
-      register: modprobe_nf_conntrack_ipv4
-      ignore_errors: true  # noqa ignore-errors
-      tags:
-        - kube-proxy
-
-    - name: Persist ip_vs modules
-      copy:
-        dest: /etc/modules-load.d/kube_proxy-ipvs.conf
-        mode: 0644
-        content: |
-          ip_vs
-          ip_vs_rr
-          ip_vs_wrr
-          ip_vs_sh
-          {% if modprobe_nf_conntrack_ipv4 is success -%}
-          nf_conntrack_ipv4
-          {%-   endif -%}
-      tags:
-        - kube-proxy
-
     - name: Create kube-proxy
       shell:
         cmd: kubectl apply --kubeconfig {{ deploy_kubeconfig_path }} -f -
