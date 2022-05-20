@@ -18,7 +18,7 @@ MarkupSafe==2.1.1
 munch==2.5.0
 netifaces==0.11.0
 openstacksdk==0.61.0
-opera==0.6.9
+opera @ git+https://github.com/Shishqa/xopera-opera.git@20622c228ad3f4675a5fbff19180e2dd5fe736ea
 os-service-types==1.7.0
 packaging==21.3
 pbr==5.8.1
