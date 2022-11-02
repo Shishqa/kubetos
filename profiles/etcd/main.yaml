@@ -106,12 +106,8 @@ node_types:
             implementation:
               primary: ansible/etcd--create.yaml
               dependencies:
-                - file: ansible/roles/etcd
-                  type: tosca.artifacts.File
-                  deploy_path: roles/etcd
-                - file: ../../utils/roles/download
-                  type: tosca.artifacts.File
-                  deploy_path: roles/download
+                - etcd_role
+                - download_role
           configure:
             inputs:
               etcd_address: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
@@ -123,13 +119,18 @@ node_types:
             implementation:
               primary: ansible/etcd--configure.yaml
               dependencies:
-                - file: ansible/roles/etcd
-                  type: tosca.artifacts.File
-                  deploy_path: roles/etcd
+                - etcd_role
           start:
             implementation:
               primary: ansible/etcd--start.yaml
               dependencies:
-                - file: ansible/roles/etcd
-                  type: tosca.artifacts.File
-                  deploy_path: roles/etcd
+                - etcd_role
+    artifacts:
+      etcd_role:
+        file: ansible/roles/etcd
+        type: tosca.artifacts.File
+        deploy_path: roles/etcd
+      download_role:
+        file: ../../utils/roles/download
+        type: tosca.artifacts.File
+        deploy_path: roles/download

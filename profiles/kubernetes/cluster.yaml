@@ -154,12 +154,17 @@ node_types:
             implementation:
               primary: ansible/kubectl--create.yaml
               dependencies:
-                - file: ansible/roles/kubectl
-                  type: tosca.artifacts.File
-                  deploy_path: roles/kubectl
-                - file: ../../utils/roles/download
-                  type: tosca.artifacts.File
-                  deploy_path: roles/download
+                - kubectl_role
+                - download_role
+    artifacts:
+      kubectl_role:
+        file: ansible/roles/kubectl
+        type: tosca.artifacts.File
+        deploy_path: roles/kubectl
+      download_role:
+        file: ../../utils/roles/download
+        type: tosca.artifacts.File
+        deploy_path: roles/download
 
   kubetos.nodes.Kubelet:
     derived_from: tosca.nodes.SoftwareComponent
@@ -209,12 +214,8 @@ node_types:
             implementation:
               primary: ansible/kubelet--create.yaml
               dependencies:
-                - file: ansible/roles/kubelet
-                  type: tosca.artifacts.File
-                  deploy_path: roles/kubelet
-                - file: ../../utils/roles/download
-                  type: tosca.artifacts.File
-                  deploy_path: roles/download
+                - kubelet_role
+                - download_role
           configure:
             inputs:
               ip: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
@@ -229,16 +230,21 @@ node_types:
             implementation:
               primary: ansible/kubelet--configure.yaml
               dependencies:
-                - file: ansible/roles/kubelet
-                  type: tosca.artifacts.File
-                  deploy_path: roles/kubelet
+                - kubelet_role
           start:
             implementation:
               primary: ansible/kubelet--start.yaml
               dependencies:
-                - file: ansible/roles/kubelet
-                  type: tosca.artifacts.File
-                  deploy_path: roles/kubelet
+                - kubelet_role
+    artifacts:
+      kubelet_role:
+        file: ansible/roles/kubelet
+        type: tosca.artifacts.File
+        deploy_path: roles/kubelet
+      download_role:
+        file: ../../utils/roles/download
+        type: tosca.artifacts.File
+        deploy_path: roles/download
 
   kubetos.nodes.Kube.APIServer:
     derived_from: tosca.nodes.Root

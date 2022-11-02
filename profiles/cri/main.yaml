@@ -84,19 +84,22 @@ node_types:
             implementation:
               primary: ansible/kata--create.yaml
               dependencies:
-                - file: ansible/roles/kata
-                  type: tosca.artifacts.File
-                  deploy_path: roles/kata
-                - file: ../../utils/roles/download
-                  type: tosca.artifacts.File
-                  deploy_path: roles/download
+                - kata_role
+                - download_role
           configure:
             implementation:
               primary: ansible/kata--configure.yaml
               dependencies:
-                - file: ansible/roles/kata
-                  type: tosca.artifacts.File
-                  deploy_path: roles/kata
+                - kata_role
+    artifacts:
+      kata_role:
+        file: ansible/roles/kata
+        type: tosca.artifacts.File
+        deploy_path: roles/kata
+      download_role:
+        file: ../../utils/roles/download
+        type: tosca.artifacts.File
+        deploy_path: roles/download
 
   kubetos.nodes.CRI-O:
     derived_from: tosca.nodes.SoftwareComponent
@@ -132,9 +135,12 @@ node_types:
             implementation:
               primary: ansible/cri-o--configure.yaml
               dependencies:
-                - file: ansible/roles/cri-o
-                  type: tosca.artifacts.File
-                  deploy_path: roles/cri-o
+                - crio_role
+    artifacts:
+      crio_role:
+        file: ansible/roles/cri-o
+        type: tosca.artifacts.File
+        deploy_path: roles/cri-o
 
   kubetos.nodes.Crictl:
     derived_from: tosca.nodes.SoftwareComponent
@@ -159,9 +165,14 @@ node_types:
             implementation:
               primary: ansible/crictl--create.yaml
               dependencies:
-                - file: ansible/roles/crictl
-                  type: tosca.artifacts.File
-                  deploy_path: roles/crictl
-                - file: ../../utils/roles/download
-                  type: tosca.artifacts.File
-                  deploy_path: roles/download
+                - crictl_role
+                - download_role
+    artifacts:
+      crictl_role:
+        file: ansible/roles/crictl
+        type: tosca.artifacts.File
+        deploy_path: roles/crictl
+      download_role:
+        file: ../../utils/roles/download
+        type: tosca.artifacts.File
+        deploy_path: roles/download

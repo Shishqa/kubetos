@@ -36,12 +36,17 @@ node_types:
             implementation:
               primary: ansible/cni--create.yaml
               dependencies:
-                - file: ansible/roles/cni
-                  type: tosca.artifacts.File
-                  deploy_path: roles/cni
-                - file: ../../utils/roles/download
-                  type: tosca.artifacts.File
-                  deploy_path: roles/download
+                - cni_role
+                - download_role
+    artifacts:
+      cni_role:
+        file: ansible/roles/cni
+        type: tosca.artifacts.File
+        deploy_path: roles/cni
+      download_role:
+        file: ../../utils/roles/download
+        type: tosca.artifacts.File
+        deploy_path: roles/download
 
   kubetos.nodes.CNI.Plugin:
     derived_from: tosca.nodes.SoftwareComponent
