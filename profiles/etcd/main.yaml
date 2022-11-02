@@ -6,14 +6,14 @@ capability_types:
     derived_from: tosca.capabilities.Endpoint
     properties:
       port:
-        type: integer
+        type: tosca.datatypes.network.PortDef
         default: 2380
 
   kubetos.capabilities.Etcd.Endpoint.Access:
     derived_from: tosca.capabilities.Endpoint
     properties:
       port:
-        type: integer
+        type: tosca.datatypes.network.PortDef
         default: 2379
       api_version:
         type: string
