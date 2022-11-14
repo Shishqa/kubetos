@@ -1,0 +1,100 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+metadata:
+  template_name: "openstack-compute"
+  template_author: "shishqa"
+  template_version: "1.0"
+
+imports:
+  - profiles/openstack/main.yaml
+
+topology_template:
+
+  inputs:
+
+    compute_name:
+      type: string
+      default: shishqa-test-kubetos
+
+    key_name:
+      type: string
+      default: shishqa-toadster
+
+    network_name:
+      type: string
+      default: net-for-intra-sandbox
+
+  node_templates:
+
+    os_server:
+      type: openstack.nodes.Compute
+      capabilities:
+        endpoint:
+          properties:
+            network_name: net-for-intra-sandbox
+            key_pair: shishqa-toadster
+            # FIXME: xOpera cannot evaluate functions in
+            #        capability property assignment
+            # network_name: { get_input: [ network_name ] }
+            # key_pair: { get_input: [ key_name ] }
+      properties:
+        name: { get_input: [ compute_name ] }
+      requirements:
+        - image: os_image
+        - flavor: os_flavor
+        - security_group: os_security_group
+
+    os_image:
+      type: openstack.nodes.Image
+      capabilities:
+        image:
+          properties:
+            distribution: "Ubuntu-Server"
+            version: "20.04-LTS-Focal-Fossa"
+            architecture: ""
+
+    os_flavor:
+      type: openstack.nodes.Flavor
+      capabilities:
+        flavor:
+          properties:
+            num_cpus: 2
+            mem_size: "1 GB"
+
+    os_security_group:
+      type: openstack.nodes.SecurityGroup
+      capabilities:
+        security_group:
+          properties:
+            name: shishqa-test-kubetos_security-group
+            # FIXME: xOpera cannot evaluate functions in
+            #        capability property assignment
+            # name:
+            #   concat:
+            #   - get_input: [ compute_name ]
+            #   - '_security-group'
+            description: security group created with kubetos
+
+    os_security_group_tcp_rule:
+      type: openstack.nodes.SecurityGroupRule
+      properties:
+        protocol: tcp
+        remote_ip_prefix: 0.0.0.0/0
+      requirements:
+        - security_group: os_security_group
+
+    os_security_group_udp_rule:
+      type: openstack.nodes.SecurityGroupRule
+      properties:
+        protocol: udp
+        remote_ip_prefix: 0.0.0.0/0
+      requirements:
+        - security_group: os_security_group
+
+    os_security_group_icmp_rule:
+      type: openstack.nodes.SecurityGroupRule
+      properties:
+        protocol: icmp
+        remote_ip_prefix: 0.0.0.0/0
+      requirements:
+        - security_group: os_security_group

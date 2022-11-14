@@ -1,0 +1,18 @@
+---
+- hosts: all
+  gather_facts: no
+  tasks:
+
+  - openstack.cloud.security_group:
+      state: present
+      name: "{{ name }}"
+      description: "{{ description }}"
+  
+  - openstack.cloud.security_group_info:
+      name: "{{ name }}"
+    register: result
+
+  - name: set security group id
+    set_stats:
+      data:
+        id: "{{ result.security_groups[0].id }}"

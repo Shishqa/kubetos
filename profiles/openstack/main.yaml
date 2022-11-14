@@ -10,19 +10,45 @@ relationship_types:
           pre_configure_source:
             inputs:
               new_item:
-                value: { get_property: [ TARGET, name ] }
+                value: { get_property: [ TARGET, security_group, name ] }
                 type: string
               list:
                 value: { get_attribute: [ SOURCE, security_groups ] }
                 type: list
             outputs:
               new_list: [ SOURCE, security_groups ]
-            implementation: ../../utils/add-to-list.yaml
+            implementation: artifacts/add-to-list.yaml
 
-node_types:
+capability_types:
 
-  openstack.nodes.SecurityGroup:
-    derived_from: tosca.nodes.Root
+  openstack.capabilities.ComputeEndpoint:
+    derived_from: tosca.capabilities.Endpoint.Admin
+    properties:
+      protocol:
+        type: string
+        default: ssh
+        constraints:
+          - equal: ssh
+      port:
+        type: tosca.datatypes.network.PortDef
+        default: 22
+        constraints:
+          - equal: 22
+      network_name:
+        type: string
+        required: true
+      key_pair:
+        description: name of keypair in Openstack
+        type: string
+
+  openstack.capabilities.Flavor:
+    derived_from: tosca.capabilities.Compute
+
+  openstack.capabilities.Image:
+    derived_from: tosca.capabilities.OperatingSystem
+
+  openstack.capabilities.SecurityGroup:
+    derived_from: tosca.capabilities.Node
     properties:
       name:
         type: string
@@ -30,89 +56,231 @@ node_types:
         type: string
         required: false
         default: ""
-    attributes:
-      id:
-        type: string
-    interfaces:
-      Standard:
-        type: tosca.interfaces.node.lifecycle.Standard
-        operations:
-          create:
-            inputs:
-              security_group: { value: { get_property: [ SELF, name ] }, type: string }
-              description: { value: { get_property: [ SELF, description ] }, type: string }
-            implementation: ansible/group--create.yaml
 
-  openstack.nodes.SecurityGroupRule:
-    derived_from: tosca.nodes.Root
-    properties:
-      protocol:
-        type: string
-      remote_ip_prefix:
-        type: string
-    attributes:
-      id:
-        type: string
-    requirements:
-      - security_group:
-          node: openstack.nodes.SecurityGroup
-          capability: tosca.capabilities.Node
-          relationship: tosca.relationships.DependsOn
-    interfaces:
-      Standard:
-        type: tosca.interfaces.node.lifecycle.Standard
-        operations:
-          create:
-            inputs:
-              security_group: { value: { get_property: [ SELF, security_group, name ] }, type: string }
-              protocol: { value: { get_property: [ SELF, protocol ] }, type: string }
-              remote_ip_prefix: { value: { get_property: [ SELF, remote_ip_prefix ] }, type: string }
-            implementation: ansible/group-rule--create.yaml
+node_types:
 
   openstack.nodes.Compute:
-    derived_from: tosca.nodes.Compute
+    derived_from: tosca.nodes.Root
     properties:
       name:
-        type: string
-      image:
-        type: string
-      flavor:
-        type: string
-      network:
-        type: string
-      floating_ip_pool:
-        type: string
-      key_name:
+        description: Server name.
         type: string
     attributes:
       id:
         type: string
+      private_address:
+        type: string
+      public_address:
+        type: string
+      networks:
+        type: map
+        entry_schema:
+          type: tosca.datatypes.network.NetworkInfo
+      ports:
+        type: map
+        entry_schema:
+          type: tosca.datatypes.network.PortInfo
       security_groups:
         type: list
         entry_schema:
           type: string
         default: []
+    capabilities:
+      scalable:
+        type: tosca.capabilities.Scalable
+      binding:
+        type: tosca.capabilities.network.Bindable
+      endpoint:
+        type: openstack.capabilities.ComputeEndpoint
     requirements:
-      - security_group:
-          node: openstack.nodes.SecurityGroup
-          capability: tosca.capabilities.Node
-          relationship: openstack.relationships.ComputeToSecurityGroup
-          occurrences: [ 1, UNBOUNDED ]
+    - image:
+        capability: openstack.capabilities.Image
+        relationship: tosca.relationships.DependsOn
+        occurrences: [ 1, 1 ]
+    - flavor:
+        capability: openstack.capabilities.Flavor
+        relationship: tosca.relationships.DependsOn
+        occurrences: [ 1, 1 ]
+    - security_group:
+        capability: openstack.capabilities.SecurityGroup
+        relationship: openstack.relationships.ComputeToSecurityGroup
+        occurrences: [ 0, UNBOUNDED ]
     interfaces:
       Standard:
         type: tosca.interfaces.node.lifecycle.Standard
         operations:
           configure:
             inputs:
-              compute_name: { value: { get_property: [ SELF, name ] }, type: string }
-              image: { value: { get_property: [ SELF, image ] }, type: string }
-              flavor: { value: { get_property: [ SELF, flavor ] }, type: string }
-              network: { value: { get_property: [ SELF, network ] }, type: string }
-              floating_ip_pool: { value: { get_property: [ SELF, floating_ip_pool ] }, type: string }
-              key_name: { value: { get_property: [ SELF, key_name ] }, type: string }
-              security_groups: { value: { get_attribute: [ SELF, security_groups ] }, type: list }
+              server_name:
+                value: { get_property: [ SELF, name ] }
+                type: string
+              server_image:
+                value: { get_attribute: [ SELF, image, id ] }
+                type: string
+              server_flavor:
+                value: { get_attribute: [ SELF, flavor, id ] }
+                type: string
+              server_keypair:
+                value: { get_property: [ SELF, endpoint, key_pair ] }
+                type: string
+              server_network:
+                value: { get_property: [ SELF, endpoint, network_name ] }
+                type: string
+              server_security_groups:
+                value: { get_attribute: [ SELF, security_groups ] }
+                type: list
+                entry_schema:
+                  type: string
             outputs:
-              public_address: [ SELF, public_address ]
               private_address: [ SELF, private_address ]
               id: [ SELF, id ]
-            implementation: ansible/compute--create.yaml
+            implementation: artifacts/server/create.yaml
+
+  openstack.nodes.Flavor:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      flavor:
+        type: openstack.capabilities.Flavor
+    attributes:
+      id:
+        type: string
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          configure:
+            inputs:
+              required_ram:
+                value: { get_property: [ SELF, flavor, mem_size ] }
+                type: string
+              required_vcpus:
+                value: { get_property: [ SELF, flavor, num_cpus ] }
+                type: string
+            outputs:
+              id: [ SELF, id ]
+            implementation: artifacts/flavor/match.yaml
+
+  openstack.nodes.FloatingIp:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      endpoint:
+        type: tosca.capabilities.Endpoint
+    properties:
+      floating_ip_pool:
+        type: string
+    requirements:
+    - nova_server:
+        capability: tosca.capabilities.Node
+        relationship: tosca.relationships.DependsOn
+        occurrences: [ 1, 1 ]
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          configure:
+            inputs:
+              floating_ip_pool:
+                value: { get_property: [ SELF, floating_ip_pool ] }
+                type: string
+              server_name:
+                value: { get_property: [ SELF, nova_server, name ] }
+                type: string
+
+  openstack.nodes.SecurityGroup:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      security_group:
+        type: openstack.capabilities.SecurityGroup
+    attributes:
+      id:
+        type: string
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          configure:
+            inputs:
+              name:
+                value: { get_property: [ SELF, security_group, name ] }
+                type: string
+              description:
+                value: { get_property: [ SELF, security_group, description ] }
+                type: string
+            outputs:
+              id: [ SELF, id ]
+            implementation: artifacts/security_group/create.yaml
+
+  openstack.nodes.SecurityGroupRule:
+    derived_from: tosca.nodes.Root
+    properties:
+      direction:
+        type: string
+        default: ingress
+        constraints:
+        - valid_values: [ ingress, egress ]
+      port_range_max:
+        type: integer
+        required: false
+      port_range_min:
+        type: integer
+        required: false
+      ethertype:
+        type: string
+        default: IPv4
+        constraints:
+        - valid_values: [ IPv4, IPv6 ]
+      protocol:
+        type: string
+        constraints:
+        - valid_values: [ tcp, udp, icmp ]
+      remote_ip_prefix:
+        type: string
+    attributes:
+      id:
+        type: string
+    requirements:
+    - security_group:
+        capability: openstack.capabilities.SecurityGroup
+        relationship: tosca.relationships.DependsOn
+        occurrences: [ 1, 1 ]
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          create:
+            inputs:
+              security_group:
+                value: { get_attribute: [ SELF, security_group, id ] }
+                type: string
+              protocol: { value: { get_property: [ SELF, protocol ] }, type: string }
+              remote_ip_prefix: { value: { get_property: [ SELF, remote_ip_prefix ] }, type: string }
+            outputs:
+              id: [ SELF, id ]
+            implementation: artifacts/security_group_rule/create.yaml
+
+  openstack.nodes.Image:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      image:
+        type: openstack.capabilities.Image
+    attributes:
+      id:
+        type: string
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        operations:
+          configure:
+            inputs:
+              required_distro:
+                value: { get_property: [ SELF, image, distribution ] }
+                type: string
+              required_arch:
+                value: { get_property: [ SELF, image, architecture ] }
+                type: string
+              required_version:
+                value: { get_property: [ SELF, image, version ] }
+                type: string
+            outputs:
+              id: [ SELF, id ]
+            implementation: artifacts/image/match.yaml

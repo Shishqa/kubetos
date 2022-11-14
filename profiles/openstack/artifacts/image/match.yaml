@@ -1,0 +1,32 @@
+---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+
+  - name: set image name
+    set_fact:
+      image_name: "{{ required_distro }}-{{ required_version }}-{{ required_arch }}"
+    when: required_arch is defined and required_arch != ""
+
+  - name: set image name
+    set_fact:
+      image_name: "{{ required_distro }}-{{ required_version }}"
+    when: required_arch is not defined or required_arch == ""
+
+  - name: retrieve info about image
+    openstack.cloud.image_info:
+      image: "{{ image_name }}"
+    register: result
+
+  - debug:
+      msg: "matched image {{ result.openstack_images[0].id }} named {{ result.openstack_images[0].name }}"
+    when: result.openstack_images | length > 0
+
+  - fail:
+      msg: "no matching images"
+    when: result.openstack_images | length == 0
+
+  - name: set image id
+    set_stats:
+      data:
+        id: "{{ result.openstack_images[0].id }}"

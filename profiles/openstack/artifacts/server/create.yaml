@@ -1,0 +1,30 @@
+---
+- hosts: all
+  gather_facts: no
+  tasks:
+
+    - name: Create instance
+      openstack.cloud.server:
+        state: present
+        name: "{{ server_name }}"
+        image: "{{ server_image }}"
+        flavor: "{{ server_flavor }}"
+        key_name: "{{ server_keypair }}"
+        nics: 
+          - net-name: "{{ server_network }}"
+        boot_from_volume: false
+        security_groups: "{{ server_security_groups }}"
+        auto_ip: false
+      register: server_info
+
+    - name: get server info
+      openstack.cloud.server_info:
+        server: "{{ server_name }}"
+      register: server_info
+
+    - name: set server attributes
+      set_stats:
+        data:
+          private_address: "{{ server_info.openstack_servers[0].private_v4 }}"
+          public_address: ""
+          id: "{{ server_info.openstack_servers[0].id }}"

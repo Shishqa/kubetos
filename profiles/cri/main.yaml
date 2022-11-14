@@ -3,10 +3,10 @@ tosca_definitions_version: tosca_simple_yaml_1_3
 imports:
   - ../cni/main.yaml
 
-capability_types:
+data_types:
 
-  kubetos.capabilities.OCI.Plugin:
-    derived_from: tosca.capabilities.Node
+  kubetos.datatypes.OCI.PluginSpec:
+    derived_from: tosca.datatypes.Root
     properties:
       name:
         type: string
@@ -14,6 +14,14 @@ capability_types:
         type: string
       root:
         type: string
+
+capability_types:
+
+  kubetos.capabilities.OCI.Plugin:
+    derived_from: tosca.capabilities.Node
+    properties:
+      spec:
+        type: kubetos.datatypes.OCI.PluginSpec
 
   kubetos.capabilities.CRI:
     derived_from: tosca.capabilities.Endpoint
@@ -34,13 +42,17 @@ relationship_types:
         operations:
           pre_configure_source:
             inputs:
-              list: { value: { get_attribute: [ SOURCE, runtimes ] }, type: list }
+              list: 
+                value: { get_attribute: [ SOURCE, runtimes ] }
+                type: list
+                entry_schema:
+                  type: kubetos.datatypes.OCI.PluginSpec
               new_item:
                 value:
                   name: { get_property: [ TARGET, oci, name ] }
                   path: { get_property: [ TARGET, oci, path ] }
                   root: { get_property: [ TARGET, oci, root ] }
-                type: map
+                type: kubetos.datatypes.OCI.PluginSpec
             outputs:
               new_list: [ SOURCE, runtimes ]
             implementation: ../../utils/add-to-list.yaml
@@ -112,7 +124,8 @@ node_types:
     attributes:
       runtimes:
         type: list
-        default: []
+        entry_schema:
+          type: kubetos.datatypes.OCI.PluginSpec
     requirements:
       - oci_runtime:
           capability: kubetos.capabilities.OCI.Plugin
@@ -129,7 +142,11 @@ node_types:
         operations:
           configure:
             inputs:
-              crio_runtimes: { value: { get_attribute: [ SELF, runtimes ] }, type: list }
+              crio_runtimes:
+                value: { get_attribute: [ SELF, runtimes ] }
+                type: list
+                entry_schema:
+                  type: kubetos.datatypes.OCI.PluginSpec
               cni_bin_dir: { value: { get_property: [ SELF, cni, cni, binary_dir ] }, type: string }
               cni_conf_dir: { value: { get_property: [ SELF, cni, cni, config_dir ] }, type: string }
             implementation:
