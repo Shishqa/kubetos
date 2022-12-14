@@ -79,6 +79,8 @@ node_types:
               hostnames:
                 value: { get_property: [ SELF, hostnames ] }
                 type: list
+                entry_schema:
+                  type: string
               ca_cert:
                 value: { get_attribute: [ SELF, ca, cert ] }
                 type: string

@@ -319,6 +319,8 @@ node_types:
           etcd_peers:
             value: { get_attribute: [ SELF, etcd, peers ] }
             type: list
+            entry_schema:
+              type: kubetos.datatypes.Etcd.PeerSpec
           kube_version:
             value: { concat: [ "v", { get_property: [ SELF, component_version ] } ] }
             type: string
@@ -336,7 +338,7 @@ node_types:
             type: string
           apiserver_count:
             value: 1
-            type: string
+            type: integer
         operations:
           start:
             implementation:

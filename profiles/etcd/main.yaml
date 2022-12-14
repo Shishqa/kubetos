@@ -1,5 +1,21 @@
 tosca_definitions_version: tosca_simple_yaml_1_3
 
+data_types:
+
+  kubetos.datatypes.Etcd.PeerSpec:
+    derived_from: tosca.datatypes.Root
+    properties:
+      name:
+        type: string
+      access_address:
+        type: string
+      access_port:
+        type: PortDef
+      peer_address:
+        type: string
+      peer_port:
+        type: PortDef
+
 capability_types:
 
   kubetos.capabilities.Etcd.Endpoint.Peer:
@@ -31,7 +47,11 @@ relationship_types:
         operations:
           pre_configure_target:
             inputs:
-              list: { value: { get_attribute: [ TARGET, peers ] }, type: list }
+              list: 
+                value: { get_attribute: [ TARGET, peers ] }
+                type: list
+                entry_schema:
+                  type: kubetos.datatypes.Etcd.PeerSpec
               new_item:
                 value:
                   name: { get_attribute: [ SOURCE, name ] }
@@ -39,7 +59,7 @@ relationship_types:
                   access_port: { get_property: [ SOURCE, access_address, port ] }
                   peer_address: { get_attribute: [ SOURCE, host, private_address ] }
                   peer_port: { get_property: [ SOURCE, peer_address, port ] }
-                type: map
+                type: kubetos.datatypes.Etcd.PeerSpec
             outputs:
               new_list: [ TARGET, peers ]
             implementation: ../../utils/add-to-list.yaml
@@ -51,7 +71,8 @@ node_types:
     attributes:
       peers:
         type: list
-        default: []
+        entry_schema:
+          type: kubetos.datatypes.Etcd.PeerSpec
 
   kubetos.nodes.Etcd:
     derived_from: tosca.nodes.SoftwareComponent
@@ -115,7 +136,11 @@ node_types:
               etcd_access_address: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
               etcd_access_port: { value: { get_property: [ SELF, access_address, port ] }, type: integer }
               etcd_member_name: { value: { get_attribute: [ SELF, name ] }, type: string }
-              etcd_peers: { value: { get_attribute: [ SELF, cluster, peers ] }, type: list }
+              etcd_peers:
+                value: { get_attribute: [ SELF, cluster, peers ] }
+                type: list
+                entry_schema:
+                  type: kubetos.datatypes.Etcd.PeerSpec
             implementation:
               primary: ansible/etcd--configure.yaml
               dependencies:
