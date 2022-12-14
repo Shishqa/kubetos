@@ -231,9 +231,10 @@ topology_template:
       capabilities:
         oci:
           properties:
-            name: runc
-            path: /usr/sbin/runc
-            root: /run/runc
+            spec:
+              name: runc
+              path: /usr/sbin/runc
+              root: /run/runc
       requirements:
         - host: compute_worker
 
@@ -242,9 +243,10 @@ topology_template:
       capabilities:
         oci:
           properties:
-            name: kata
-            path: /opt/kata/bin/kata-runtime
-            root: /run/kata-containers
+            spec:
+              name: kata
+              path: /opt/kata/bin/kata-runtime
+              root: /run/kata-containers
       requirements:
         - host: compute_worker
 
@@ -547,9 +549,10 @@ topology_template:
       capabilities:
         oci:
           properties:
-            name: runc
-            path: /usr/sbin/runc
-            root: /run/runc
+            spec:
+              name: runc
+              path: /usr/sbin/runc
+              root: /run/runc
       requirements:
         - host: compute
 
@@ -558,9 +561,10 @@ topology_template:
       capabilities:
         oci:
           properties:
-            name: kata
-            path: /opt/kata/bin/kata-runtime
-            root: /run/kata-containers
+            spec:
+              name: kata
+              path: /opt/kata/bin/kata-runtime
+              root: /run/kata-containers
       requirements:
         - host: compute
 

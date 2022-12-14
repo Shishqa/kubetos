@@ -15,6 +15,8 @@ relationship_types:
               list:
                 value: { get_attribute: [ SOURCE, security_groups ] }
                 type: list
+                entry_schema:
+                  type: string
             outputs:
               new_list: [ SOURCE, security_groups ]
             implementation: ../../utils/add-to-list.yaml
@@ -91,7 +93,6 @@ node_types:
         type: list
         entry_schema:
           type: string
-        default: []
     requirements:
       - security_group:
           node: openstack.nodes.SecurityGroup
@@ -110,7 +111,11 @@ node_types:
               network: { value: { get_property: [ SELF, network ] }, type: string }
               floating_ip_pool: { value: { get_property: [ SELF, floating_ip_pool ] }, type: string }
               key_name: { value: { get_property: [ SELF, key_name ] }, type: string }
-              security_groups: { value: { get_attribute: [ SELF, security_groups ] }, type: list }
+              security_groups:
+                value: { get_attribute: [ SELF, security_groups ] }
+                type: list
+                entry_schema:
+                  type: string
             outputs:
               public_address: [ SELF, public_address ]
               private_address: [ SELF, private_address ]
