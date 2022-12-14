@@ -118,6 +118,7 @@ node_types:
     attributes:
       runtimes:
         type: list
+        default: []
         entry_schema:
           type: kubetos.datatypes.OCI.RuntimeSpec
     requirements:

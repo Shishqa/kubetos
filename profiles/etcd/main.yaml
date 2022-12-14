@@ -71,6 +71,7 @@ node_types:
     attributes:
       peers:
         type: list
+        default: []
         entry_schema:
           type: kubetos.datatypes.Etcd.PeerSpec
 

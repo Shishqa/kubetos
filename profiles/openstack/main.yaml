@@ -91,6 +91,7 @@ node_types:
         type: string
       security_groups:
         type: list
+        default: []
         entry_schema:
           type: string
     requirements:

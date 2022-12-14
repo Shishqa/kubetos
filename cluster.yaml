@@ -264,11 +264,11 @@ topology_template:
       type: openstack.nodes.Compute
       properties:
         name: kubetos--worker
-        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
+        image: "Ubuntu-Server-20.04-LTS-Focal-Fossa"
         flavor: Memory2.small.s50
         network: net-for-intra-sandbox
         floating_ip_pool: ispras
-        key_name: shishqa
+        key_name: shishqa-mana
       requirements:
         - security_group: sg
 
@@ -582,11 +582,11 @@ topology_template:
       type: openstack.nodes.Compute
       properties:
         name: kubetos--control-plane
-        image: "Ubuntu Server 20.04 LTS (Focal Fossa)"
+        image: "Ubuntu-Server-20.04-LTS-Focal-Fossa"
         flavor: Memory2.small.s50
         network: net-for-intra-sandbox
         floating_ip_pool: ispras
-        key_name: shishqa
+        key_name: shishqa-mana
       requirements:
         - security_group: sg
 
