@@ -1,0 +1,37 @@
+{
+    "defaultAction": "SCMP_ACT_LOG",
+    "architectures": [
+        "SCMP_ARCH_X86_64",
+        "SCMP_ARCH_X86",
+        "SCMP_ARCH_X32"
+    ],
+    "syscalls": [
+        {
+            "names": [
+                "arch_prctl",
+                "sched_yield",
+                "futex",
+                "write",
+                "mmap",
+                "exit_group",
+                "madvise",
+                "rt_sigprocmask",
+                "getpid",
+                "gettid",
+                "tgkill",
+                "rt_sigaction",
+                "read",
+                "getpgrp"
+            ],
+            "action": "SCMP_ACT_ALLOW"
+        },
+        {
+            "names": [
+                "add_key",
+                "keyctl",
+                "ptrace"
+            ],
+            "action": "SCMP_ACT_ERRNO"
+        }
+    ]
+}

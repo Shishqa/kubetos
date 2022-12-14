@@ -1,0 +1,13 @@
+---
+- name: Refresh config | Create etcd config file
+  template:
+    src: etcd.env.j2
+    dest: /etc/etcd.env
+    mode: 0640
+
+- name: Configure | Copy etcd.service systemd file
+  template:
+    src: etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+    backup: yes
+    mode: 0644

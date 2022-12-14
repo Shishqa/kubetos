@@ -1,0 +1,6 @@
+- replace:
+    path: '{{ playbook_dir }}/hosts.ini'
+    regexp: '^\[{{ server_name }}\][^[]+'
+    replace: ''
+    backup: yes
+  ignore_errors: true

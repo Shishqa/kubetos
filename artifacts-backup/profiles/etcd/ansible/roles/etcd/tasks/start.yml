@@ -1,0 +1,12 @@
+---
+- name: Configure | reload systemd
+  systemd:
+    daemon_reload: true
+
+# when scaling new etcd will fail to start
+- name: Configure | Ensure etcd is running
+  service:
+    name: etcd
+    state: started
+    enabled: yes
+  failed_when: false

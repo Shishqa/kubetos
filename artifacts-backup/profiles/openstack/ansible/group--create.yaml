@@ -1,0 +1,15 @@
+---
+- hosts: all
+  gather_facts: no
+  tasks:
+
+    - name: Create security group
+      os_security_group:
+        state: present
+        name: "{{ security_group }}"
+        description: "{{ description }}"
+      register: sg_info
+
+    - name: Set attributes
+      set_fact:
+        id: "{{ sg_info.id }}"

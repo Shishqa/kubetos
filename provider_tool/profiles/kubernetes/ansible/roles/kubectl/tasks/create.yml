@@ -1,0 +1,22 @@
+---
+- name: install | Download kubectl
+  import_role:
+    name: download
+    tasks_from: download_file
+  vars:
+    download:
+      file: true
+      version: "{{ kubectl_version }}"
+      dest: "/tmp/releases/kubectl-{{ kubectl_version }}-{{ host_architecture }}"
+      sha256: "{{ kubectl_binary_checksum }}"
+      url: "{{ kubectl_download_url }}"
+      unarchive: false
+      owner: "root"
+      mode: "0755"
+
+- name: install | Copy kubectl binary from download dir
+  copy:
+    src: "/tmp/releases/kubectl-{{ kubectl_version }}-{{ host_architecture }}"
+    dest: "/usr/local/bin/kubectl"
+    mode: 0755
+    remote_src: true

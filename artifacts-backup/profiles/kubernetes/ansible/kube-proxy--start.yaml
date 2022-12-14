@@ -1,0 +1,135 @@
+---
+- hosts: all
+  gather_facts: no
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Create kube-proxy
+      shell:
+        cmd: kubectl apply --kubeconfig {{ deploy_kubeconfig_path }} -f -
+        stdin: |-
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: kube-proxy
+            namespace: kube-system
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: kubetos:node-proxier
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: system:node-proxier
+          subjects:
+          - kind: ServiceAccount
+            name: kube-proxy
+            namespace: kube-system
+          ---
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            labels:
+              app: kube-proxy
+            name: kube-proxy
+            namespace: kube-system
+          data:
+            config.conf: |-
+              apiVersion: kubeproxy.config.k8s.io/v1alpha1
+              kind: KubeProxyConfiguration
+              bindAddress: 0.0.0.0
+              bindAddressHardFail: false
+              clientConnection:
+                acceptContentTypes: ""
+                burst: 10
+                contentType: application/vnd.kubernetes.protobuf
+                kubeconfig: /var/lib/kube-proxy/kubeconfig.conf
+                qps: 5
+              clusterCIDR: {{ cluster_cidr }}
+              configSyncPeriod: 15m0s
+              conntrack:
+                maxPerCore: 32768
+                min: 131072
+                tcpCloseWaitTimeout: 1h0m0s
+                tcpEstablishedTimeout: 24h0m0s
+              detectLocalMode: ""
+              enableProfiling: false
+              healthzBindAddress: 0.0.0.0:10256
+              iptables:
+                masqueradeAll: false
+                masqueradeBit: 14
+                minSyncPeriod: 0s
+                syncPeriod: 30s
+              ipvs:
+                excludeCIDRs: []
+                minSyncPeriod: 0s
+                scheduler: rr
+                strictARP: false
+                syncPeriod: 30s
+                tcpFinTimeout: 0s
+                tcpTimeout: 0s
+                udpTimeout: 0s
+              metricsBindAddress: 127.0.0.1:10249
+              mode: ipvs
+              nodePortAddresses: []
+              oomScoreAdj: -999
+              portRange: ""
+              showHiddenMetricsForVersion: ""
+              udpIdleTimeout: 250ms
+              winkernel:
+                enableDSR: false
+                networkName: ""
+                sourceVip: ""
+            kubeconfig.conf: |-
+              {{ kubeconfig | indent(4) }}
+          ---
+          apiVersion: apps/v1
+          kind: DaemonSet
+          metadata:
+            name: kube-proxy
+            namespace: kube-system
+            labels:
+              k8s-app: kube-proxy
+          spec:
+            selector:
+              matchLabels:
+                name: kube-proxy
+            template:
+              metadata:
+                labels:
+                  name: kube-proxy
+              spec:
+                containers:
+                - command:
+                  - /usr/local/bin/kube-proxy
+                  - --config=/var/lib/kube-proxy/config.conf
+                  name: kube-proxy
+                  image: k8s.gcr.io/kube-proxy:{{ kube_version }}
+                  securityContext:
+                    privileged: true
+                  volumeMounts:
+                  - name: kube-proxy
+                    mountPath: /var/lib/kube-proxy
+                  - name: xtables-lock
+                    mountPath: /run/xtables.lock
+                  - name: lib-modules
+                    mountPath: /lib/modules
+                    readOnly: true
+                priorityClassName: system-node-critical
+                serviceAccountName: kube-proxy
+                hostNetwork: true
+                volumes:
+                - name: xtables-lock
+                  hostPath:
+                    path: /run/xtables.lock
+                    type: FileOrCreate
+                - name: lib-modules
+                  hostPath:
+                    path: /lib/modules
+                    type: ""
+                - configMap:
+                    defaultMode: 420
+                    name: kube-proxy
+                  name: kube-proxy

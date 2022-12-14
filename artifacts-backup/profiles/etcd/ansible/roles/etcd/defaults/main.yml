@@ -1,0 +1,125 @@
+---
+
+etcd_version: TODO
+
+etcd_peer_addresses: |-
+  {% for item in etcd_peers -%}
+    {{ item.name }}=http://{{ item.peer_address }}:{{ item.peer_port }}{% if not loop.last %},{% endif %}
+  {%- endfor %}
+
+
+bin_dir: /usr/local/bin
+local_release_dir: /tmp/releases
+
+_host_architecture_groups:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+host_architecture: >-
+  {%- if ansible_architecture in _host_architecture_groups -%}
+  {{ _host_architecture_groups[ansible_architecture] }}
+  {%- else -%}
+  {{ ansible_architecture }}
+  {%- endif -%}
+
+
+
+
+etcd_download_url: "https://github.com/coreos/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-{{ host_architecture }}.tar.gz"
+
+etcd_binary_checksums:
+  # Etcd does not have arm32 builds at the moment, having some dummy value is
+  # required to avoid "no attribute" error
+  arm: 0
+  arm64: 1934ebb9f9f6501f706111b78e5e321a7ff8d7792d3d96a76e2d01874e42a300
+  amd64: 2ac029e47bab752dacdb7b30032f230f49e2f457cbc32e8f555c2210bb5ff107
+
+etcd_binary_checksum: "{{ etcd_binary_checksums[host_architecture] }}"
+
+
+# Vars for pointing to etcd endpoints
+etcd_peer_url: "http://{{ etcd_access_address }}:2380"
+etcd_client_url: "http://{{ etcd_access_address }}:2379"
+etcd_member_name: "{{ inventory_hostname }}"
+
+
+
+
+etcd_backup_prefix: "/var/backups"
+etcd_data_dir: "/var/lib/etcd"
+
+# Number of etcd backups to retain. Set to a value < 0 to retain all backups
+etcd_backup_retention_count: -1
+
+etcd_script_dir: "{{ bin_dir }}/etcd-scripts"
+
+etcd_heartbeat_interval: "250"
+etcd_election_timeout: "5000"
+
+# etcd_snapshot_count: "10000"
+
+etcd_metrics: "basic"
+
+# Uncomment to set a separate port for etcd to expose metrics on
+# etcd_metrics_port: 2381
+
+## A dictionary of extra environment variables to add to etcd.env, formatted like:
+##  etcd_extra_vars:
+##    ETCD_VAR1: "value1"
+##    ETCD_VAR2: "value2"
+etcd_extra_vars: {}
+
+# Limits
+# Limit memory only if <4GB memory on host. 0=unlimited
+etcd_memory_limit: "{% if ansible_memtotal_mb < 4096 %}512M{% else %}0{% endif %}"
+
+# etcd_quota_backend_bytes: "2147483648"
+
+# Uncomment to set CPU share for etcd
+# etcd_cpu_limit: 300m
+
+etcd_blkio_weight: 1000
+
+etcd_compaction_retention: "8"
+
+# Force clients like etcdctl to use TLS certs (different than peer security)
+etcd_secure_client: false
+
+# Enable peer client cert authentication
+etcd_peer_client_auth: false
+
+# Maximum number of snapshot files to retain (0 is unlimited)
+# etcd_max_snapshots: 5
+
+# Maximum number of wal files to retain (0 is unlimited)
+# etcd_max_wals: 5
+
+# Number of loop retries
+etcd_retries: 4
+
+## Support tls cipher suites.
+# etcd_tls_cipher_suites: {}
+#   - TLS_RSA_WITH_RC4_128_SHA
+#   - TLS_RSA_WITH_3DES_EDE_CBC_SHA
+#   - TLS_RSA_WITH_AES_128_CBC_SHA
+#   - TLS_RSA_WITH_AES_256_CBC_SHA
+#   - TLS_RSA_WITH_AES_128_CBC_SHA256
+#   - TLS_RSA_WITH_AES_128_GCM_SHA256
+#   - TLS_RSA_WITH_AES_256_GCM_SHA384
+#   - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+#   - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_RC4_128_SHA
+#   - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+#   - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+#   - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+#   - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+#   - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+#   - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+#   - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+#   - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+#   - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+#   - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+#   - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256

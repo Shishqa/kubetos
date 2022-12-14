@@ -1,0 +1,61 @@
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+nodeStatusUpdateFrequency: "{{ kubelet_status_update_frequency }}"
+failSwapOn: {{ kubelet_fail_swap_on|default(true) }}
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    enabled: false
+  x509:
+    clientCAFile: {{ ca_cert_path }}
+authorization:
+  mode: AlwaysAllow
+{% if kubelet_enforce_node_allocatable is defined and kubelet_enforce_node_allocatable != "\"\"" %}
+{% set kubelet_enforce_node_allocatable_list = kubelet_enforce_node_allocatable.split() %}
+enforceNodeAllocatable:
+{% for item in kubelet_enforce_node_allocatable_list %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+clusterDomain: "cluster.local"
+clusterDNS:
+  - "{{ dns_ip }}"
+cgroupDriver: systemd
+containerLogMaxFiles: {{ kubelet_logfiles_max_nr }}
+containerLogMaxSize: {{ kubelet_logfiles_max_size }}
+maxPods: {{ kubelet_max_pods }}
+address: {{ kubelet_bind_address }}
+healthzPort: {{ kubelet_healthz_port }}
+healthzBindAddress: {{ kubelet_healthz_bind_address }}
+kubeletCgroups: {{ kubelet_kubelet_cgroups }}
+podCIDR: "{{ pod_cidr }}"
+{# Node reserved CPU/memory #}
+kubeReserved:
+  cpu: {{ kube_cpu_reserved }}
+  memory: {{ kube_memory_reserved }}
+{% if system_reserved is defined and system_reserved %}
+systemReserved:
+  cpu: {{ system_cpu_reserved }}
+  memory: {{ system_memory_reserved }}
+{% endif %}
+resolvConf: "{{ kube_resolv_conf }}"
+{% if kubelet_config_extra_args %}
+{{ kubelet_config_extra_args | to_nice_yaml(indent=2) }}
+{% endif %}
+staticPodPath: {{ kubelet_static_pod_path }}
+{% if tls_min_version is defined %}
+tlsMinVersion: {{ tls_min_version }}
+{% endif %}
+{% if tls_cipher_suites is defined %}
+tlsCipherSuites:
+{% for tls in tls_cipher_suites %}
+- {{ tls }}
+{% endfor %}
+{% endif %}
+tlsCertFile: {{ cert_path }}
+tlsPrivateKeyFile: {{ key_path }}
+{% if kubelet_version is version('v1.21.0', '>=') %}
+shutdownGracePeriod: {{ kubelet_shutdown_grace_period }}
+shutdownGracePeriodCriticalPods: {{ kubelet_shutdown_grace_period_critical_pods }}
+{% endif %}

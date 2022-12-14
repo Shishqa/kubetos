@@ -1,0 +1,10 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Create Crictl
+      include_role:
+        name: crictl

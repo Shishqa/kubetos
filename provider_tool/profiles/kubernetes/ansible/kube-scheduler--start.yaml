@@ -1,0 +1,26 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Make sure directories exists
+      file:
+        name: "{{ item }}"
+        state: directory
+        mode: 0640
+      loop:
+        - "{{ static_pod_path }}"
+
+    - name: Create scheduler config
+      template:
+        src: kube-scheduler.config.yaml.j2
+        dest: "{{ config_path }}"
+        mode: 0644
+
+    - name: Create scheduler
+      template:
+        src: kube-scheduler.yaml.j2
+        dest: "{{ static_pod_path }}/kube-scheduler.yaml"
+        mode: 0644

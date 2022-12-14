@@ -1,0 +1,110 @@
+##########################################################################
+
+##########################################################################
+# The content of this file reflects TOSCA Simple Profile in YAML version
+# 1.0.0. It describes the definition for TOSCA types including Node Type,
+# Relationship Type, Capability Type and Interfaces.
+##########################################################################
+tosca_definitions_version: tosca_simple_yaml_1_0
+
+##########################################################################
+# Node Type.
+# A Node Type is a reusable entity that defines the type of one or more
+# Node Templates.
+##########################################################################
+node_types:
+  provider.nodes.Root:
+    derived_from: tosca.nodes.Root
+    capabilities:
+      feature:
+        type: provider.capabilities.Node
+        occurrences: [ 1, 1 ]
+    artifacts:
+      contains:
+        file: artifacts/contains.yaml
+        type: provider.artifacts.File
+      equals:
+        file: artifacts/equals.yaml
+        type: provider.artifacts.File
+      ip_contains:
+        file: artifacts/ip_contains.yaml
+        type: provider.artifacts.File
+      add_host:
+        file: artifacts/add_host.yaml
+        type: provider.artifacts.File
+    requirements:
+      - dependency:
+          capability: provider.capabilities.Node
+          node: provider.nodes.Root
+          relationship: provider.relationships.DependsOn
+          occurrences: [ 0, UNBOUNDED ]
+
+##########################################################################
+# Relationship Type.
+# A Relationship Type is a reusable entity that defines the type of one
+# or more relationships between Node Types or Node Templates.
+##########################################################################
+relationship_types:
+  provider.relationships.Root:
+    derived_from: tosca.relationships.Root
+    interfaces:
+      Target:
+        type: provider.interfaces.relationships.Target
+  
+  provider.relationships.DependsOn:
+    description: This type results in ordering of initializing objects.
+    derived_from: provider.relationships.Root
+    valid_target_types: [ tosca.capabilities.Node ]
+
+  provider.relationships.HostedOn:
+    description: This type represents the object to be the part of another object.
+    derived_from: tosca.relationships.HostedOn
+
+  provider.relationships.ConnectsTo:
+    description: This type represents the network connection between to instances or two software components.
+    derived_from: provider.relationships.Root
+    valid_target_types: [ tosca.capabilities.Node ]
+
+  provider.relationships.AttachesTo:
+    description: This type represents the attachment of volume to the server
+    derived_from: provider.relationships.Root
+    valid_target_types: [ tosca.capabilities.Attachment ]
+    properties:
+      device:
+        type: string
+        required: false
+
+  provider.relationships.network.LinksTo:
+    description: This type appears between FloatingIp and Network
+    derived_from: tosca.relationships.network.LinksTo
+    valid_target_types: [ tosca.capabilities.network.Linkable ]
+
+  provider.relationships.network.BindsTo:
+    description: This type appears between FloatingIp and Server
+    derived_from: tosca.relationships.network.BindsTo
+    valid_target_types: [ tosca.capabilities.network.Bindable ]
+
+
+  ##########################################################################
+  # Interfaces Type.
+  # The Interfaces element describes a list of one or more interface
+  # definitions for a modelable entity (e.g., a Node or Relationship Type)
+  # as defined within the TOSCA Simple Profile specification.
+##########################################################################
+interface_types:
+  provider.interfaces.relationships.Target:
+    description: >
+      The relationship to use scripts before target or source is created in relationship
+    derived_from: tosca.interfaces.Root
+    total:
+      description: Total objects
+    choose:
+      description: Choose one object, use predefined artifacts from nodes.Root
+
+capability_types:
+  provider.capabilities.Node:
+    derived_from: tosca.capabilities.Node
+
+artifact_types:
+  provider.artifacts.File:
+    derived_from: tosca.artifacts.File

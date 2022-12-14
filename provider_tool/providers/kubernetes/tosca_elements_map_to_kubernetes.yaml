@@ -1,0 +1,125 @@
+tosca.nodes.Compute:
+  properties:
+    private_address:
+      - parameter: "kubernetes.nodes.Service.properties.spec.clusterIP"
+        value: "{self[value]}"
+      - parameter: "kubernetes.nodes.Service.properties.metadata.name"
+        value: "{self[name]}-service"
+    public_address:
+      - parameter: "kubernetes.nodes.Service.properties.spec.externalIPs"
+        value: ["{self[value]}"]
+      - parameter: "kubernetes.nodes.Service.properties.metadata.name"
+        value: "{self[name]}-service"
+    networks:
+      error: true
+      reason: "networks not supported in Kubernetes"
+    ports:
+      error: true
+      reason: "ports not supported in Kubernetes"
+  capabilities:
+    host.properties:
+      num_cpus:
+        - parameter: "kubernetes.nodes.Deployment.properties.spec.template.spec.containers"
+          value:
+            - parameter: args
+              value: "{self[value]}"
+      cpu_frequency:
+        error: true
+        reason: "cpu_frequency not supported in Kubernetes"
+      disk_size:
+        error: true
+        reason: "disk_size not supported in Kubernetes"
+      mem_size:
+        parameter: "{self[buffer][container][resources][limits][memory]}"
+        value:
+          source: transform_units
+          parameters:
+            source_value: "{self[value]}"
+            target_unit: "MB"
+#            is_without_b: True
+          executor: python
+          value: default
+    endpoint.properties:
+      - parameter: "{self[buffer][container][ports]}"
+        value:
+          - "{self[buffer][container_port]}"
+      - protocol:
+          parameter: "{self[buffer][endpoint][protocol]}"
+          value: "{self[value]}"
+        port:
+          - parameter: "{self[buffer][endpoint][port]}"
+            value: "{self[value]}"
+          - parameter: "{self[buffer][container_port][port]}"
+            value: "{self[value]}"
+          - parameter: "{self[buffer][container_port][containerPort]}"
+            value: "{self[value]}"
+          - parameter: "kubernetes.nodes.Service.properties.metadata.name"
+            value: "{self[name]}-service"
+        port_name:
+          - parameter: "{self[buffer][container_port][name]}"
+            value: "{self[value]}"
+          - parameter: "{self[buffer][endpoint][targetPort]}"
+            value: "{self[value]}"
+          - parameter: "kubernetes.nodes.Service.properties.spec.selector"
+            value:
+              app: "{self[name]}"
+          - parameter: "kubernetes.nodes.Deployment.properties.spec.selector.matchLabels"
+            value:
+              app: "{self[name]}"
+        secure:
+          error: true
+          reason: "secure not supported in Kubernetes"
+        url_path:
+          error: true
+          reason: "url_path not supported in Kubernetes"
+        network_name:
+          error: true
+          reason: "network_name not supported in Kubernetes"
+        initiator:
+          error: true
+          reason: "initiator not supported in Kubernetes"
+        ports:
+          error: true
+          reason: "ports not supported in Kubernetes"
+      - parameter: "kubernetes.nodes.Service.properties.spec.ports"
+        value:
+          - "{self[buffer][endpoint]}"
+    os.properties:
+      - parameter: "kubernetes.nodes.Deployment.properties.spec.template.spec.containers"
+        value:
+          - "{self[buffer][container]}"
+      - architecture:
+          error: true
+          reason: "not supported in Kubernetes"
+        type:
+          parameter: "{self[buffer][image]}"
+          value: "{self[value]}"
+        distribution:
+          parameter: "{self[buffer][ver]}"
+          value: ":{self[value]}"
+        version:
+          parameter: "{self[buffer][ver]}"
+          value: ":{self[value]}"
+      - parameter: "{self[buffer][container][image]}"
+        value: "{self[buffer][image]}{self[buffer][ver]}"
+      - parameter: "kubernetes.nodes.Deployment.properties.metadata.name"
+        value: "{self[name]}-deployment"
+      - parameter: "kubernetes.nodes.Deployment.properties.spec.selector.matchLabels"
+        value:
+          app: "{self[name]}"
+      - parameter: "kubernetes.nodes.Deployment.properties.metadata.labels"
+        value:
+          app: "{self[name]}"
+      - parameter: "kubernetes.nodes.Deployment.properties.spec.template.metadata.labels"
+        value:
+          app: "{self[name]}"
+      - parameter: "{self[buffer][container][name]}"
+        value: "{self[name]}-container"
+    scalable.properties:
+      max_instances:
+        error: true
+        reason: "max_instances not supported in Kubernetes"
+      min_instances: "kubernetes.nodes.Deployment.properties.spec.replicas"
+      default:
+        error: true
+        reason: "max_instances not supported in Kubernetes, try scalable.properties.default"

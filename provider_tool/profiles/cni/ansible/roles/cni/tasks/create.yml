@@ -1,0 +1,32 @@
+---
+- name: CNI | Download CNI plugins
+  import_role:
+    name: download
+    tasks_from: download_file
+  vars:
+    download:
+      file: true
+      version: "{{ cni_version }}"
+      dest: "/tmp/releases/cni-plugins-linux-{{ host_architecture }}-{{ cni_version }}.tgz"
+      sha256: "{{ cni_binary_checksum }}"
+      url: "{{ cni_download_url }}"
+      unarchive: false
+      owner: "root"
+      mode: "0755"
+
+- name: CNI | make sure CNI directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    recurse: true
+  loop:
+    - "{{ cni_binary_dir }}"
+    - "{{ cni_config_dir }}"
+
+- name: CNI | Copy cni plugins
+  unarchive:
+    src: "/tmp/releases/cni-plugins-linux-{{ host_architecture }}-{{ cni_version }}.tgz"
+    dest: "{{ cni_binary_dir }}"
+    mode: 0755
+    remote_src: yes

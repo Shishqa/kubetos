@@ -1,0 +1,11 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Create CNI
+      include_role:
+        name: cni
+        tasks_from: create

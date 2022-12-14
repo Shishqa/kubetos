@@ -1,0 +1,32 @@
+---
+- name: crictl | Download crictl
+  import_role:
+    name: download
+    tasks_from: download_file
+  vars:
+    download:
+      file: true
+      version: "{{ crictl_version }}"
+      dest: "{{ local_release_dir }}/crictl-{{ crictl_version }}-linux-{{ host_architecture }}.tar.gz"
+      sha256: "{{ crictl_binary_checksum }}"
+      url: "{{ crictl_download_url }}"
+      unarchive: true
+      owner: "root"
+      mode: "0755"
+
+- name: Install crictl config
+  template:
+    src: crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    owner: root
+    mode: 0644
+
+- name: Copy crictl binary from download dir
+  copy:
+    src: "{{ local_release_dir }}/crictl"
+    dest: "{{ bin_dir }}/crictl"
+    mode: 0755
+    remote_src: true
+  notify:
+    - Get crictl completion
+    - Install crictl completion

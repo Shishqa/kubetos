@@ -1,0 +1,12 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Create loopback
+      template:
+        src: loopback.conf.j2
+        dest: "{{ cni_config_dir }}/99-loopback.conf"
+        mode: 0644

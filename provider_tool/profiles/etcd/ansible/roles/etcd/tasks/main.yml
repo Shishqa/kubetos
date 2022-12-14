@@ -1,0 +1,37 @@
+---
+#- include_tasks: check_certs.yml
+#  when: cert_management == "script"
+#  tags:
+#    - etcd-secrets
+#    - facts
+
+#- include_tasks: "gen_certs_script.yml"
+#  when:
+#    - cert_management |d('script') == "script"
+#  tags:
+#    - etcd-secrets
+
+#- include_tasks: upd_ca_trust.yml
+#  tags:
+#    - etcd-secrets
+
+- include_tasks: install_host.yml
+  tags:
+    - upgrade
+
+- include_tasks: configure.yml
+
+- include_tasks: refresh_config.yml
+
+- name: Restart etcd if certs changed
+  service:
+    name: etcd
+    state: restarted
+    enabled: yes
+  when: etcd_secret_changed | default(false)
+
+# After etcd cluster is assembled, make sure that
+# initial state of the cluster is in `existing`
+# state instead of `new`.
+- include_tasks: refresh_config.yml
+  when: is_etcd_master

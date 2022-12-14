@@ -1,0 +1,7 @@
+---
+- name: Start kubelet
+  service:
+    name: kubelet
+    daemon_reload: yes
+    enabled: yes
+    state: started

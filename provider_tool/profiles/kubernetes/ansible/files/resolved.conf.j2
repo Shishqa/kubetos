@@ -1,0 +1,9 @@
+[Resolve]
+DNS={{ dns_ip }}
+#FallbackDNS={{ ( nameservers|d([]) + cloud_resolver|d([])) | unique | join(' ') }}
+Domains=default.svc.cluster.local svc.cluster.local kubernetes default.kubernetes
+#LLMNR=no
+#MulticastDNS=no
+DNSSEC=no
+Cache=no-negative
+#DNSStubListener=yes

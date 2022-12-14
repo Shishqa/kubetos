@@ -1,0 +1,26 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Make sure directories exists
+      file:
+        name: "{{ item }}"
+        state: directory
+        mode: 0640
+      loop:
+        - "{{ static_pod_path }}"
+
+    - name: Create apiserver
+      template:
+        src: kube-apiserver.yaml.j2
+        dest: "{{ static_pod_path }}/kube-apiserver.yaml"
+        mode: 0644
+
+    - name: Wait for k8s apiserver
+      wait_for:
+        host: "{{ public_address }}"
+        port: "6443"
+        timeout: 180

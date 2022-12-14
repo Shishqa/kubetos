@@ -1,0 +1,38 @@
+---
+
+bin_dir: /usr/local/bin
+local_release_dir: /tmp/releases
+
+cri_socket: "{{ hostvars[config.cri].socket }}"
+
+_host_architecture_groups:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+host_architecture: >-
+  {%- if ansible_architecture in _host_architecture_groups -%}
+  {{ _host_architecture_groups[ansible_architecture] }}
+  {%- else -%}
+  {{ ansible_architecture }}
+  {%- endif -%}
+
+crictl_download_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ host_architecture }}.tar.gz"
+
+crictl_checksums:
+  arm:
+    v1.22.0: b74f7cc52ce79c6d7fd776beb6353f4628e9c36f17ba2b8e6c48155714057f07
+    v1.21.0: 638af758860b282f8ec862b90ecbc200ec87388134e555684f92d39591c938f7
+    v1.20.0: ed5ffdd386261ec1146731421d4ac9c5c7f91e08486fee409452a3364bef792a
+    v1.19.0: b72fd3c4b35f60f5db2cfcd8e932f6000cf9c2978b54adfcf60ee5e2d452e92f
+  arm64:
+    v1.22.0: a713c37fade0d96a989bc15ebe906e08ef5c8fe5e107c2161b0665e9963b770e
+    v1.21.0: 454eecd29fe636282339af5b73c60234a7d10e4b11b9e18937e33056763d72cf
+    v1.20.0: eda6879710eb046d335162d4afe8494c6f8161142ad3188022852f64b92806a8
+    v1.19.0: ec040d14ca03e8e4e504a85dae5353e04b5d9d8aea3df68699258992c0eb8d88
+  amd64:
+    v1.22.0: 45e0556c42616af60ebe93bf4691056338b3ea0001c0201a6a8ff8b1dbc0652a
+    v1.21.0: 85c78a35584971625bf1c3bcd46e5404a90396f979d7586f18b11119cb623e24
+    v1.20.0: 44d5f550ef3f41f9b53155906e0229ffdbee4b19452b4df540265e29572b899c
+    v1.19.0: 87d8ef70b61f2fe3d8b4a48f6f712fd798c6e293ed3723c1e4bbb5052098f0ae
+
+crictl_binary_checksum: "{{ crictl_checksums[host_architecture][crictl_version] }}"

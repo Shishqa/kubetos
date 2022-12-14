@@ -1,0 +1,161 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+data_types:
+
+  kubetos.datatypes.Etcd.PeerSpec:
+    derived_from: tosca.datatypes.Root
+    properties:
+      name:
+        type: string
+      access_address:
+        type: string
+      access_port:
+        type: tosca.datatypes.network.PortDef
+      peer_address:
+        type: string
+      peer_port:
+        type: tosca.datatypes.network.PortDef
+
+capability_types:
+
+  kubetos.capabilities.Etcd.Endpoint.Peer:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      port:
+        type: tosca.datatypes.network.PortDef
+        default: 2380
+
+  kubetos.capabilities.Etcd.Endpoint.Access:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      port:
+        type: tosca.datatypes.network.PortDef
+        default: 2379
+      api_version:
+        type: string
+        default: v2
+        constraints:
+          - valid_values: [ v1, v2 ]
+
+relationship_types:
+
+  kubetos.relationships.EtcdPeer:
+    derived_from: tosca.relationships.ConnectsTo
+    interfaces:
+      Configure:
+        type: tosca.interfaces.relationship.Configure
+        operations:
+          pre_configure_target:
+            inputs:
+              list: 
+                value: { get_attribute: [ TARGET, peers ] }
+                type: list
+                entry_schema:
+                  type: kubetos.datatypes.Etcd.PeerSpec
+              new_item:
+                value:
+                  name: { get_attribute: [ SOURCE, name ] }
+                  access_address: { get_attribute: [ SOURCE, host, private_address ] }
+                  access_port: { get_property: [ SOURCE, access_address, port ] }
+                  peer_address: { get_attribute: [ SOURCE, host, private_address ] }
+                  peer_port: { get_property: [ SOURCE, peer_address, port ] }
+                type: kubetos.datatypes.Etcd.PeerSpec
+            outputs:
+              new_list: [ TARGET, peers ]
+            implementation: ../../utils/add-to-list.yaml
+
+node_types:
+
+  kubetos.nodes.Etcd.Cluster:
+    derived_from: tosca.nodes.Root
+    attributes:
+      peers:
+        type: list
+        default: []
+        entry_schema:
+          type: kubetos.datatypes.Etcd.PeerSpec
+
+  kubetos.nodes.Etcd:
+    derived_from: tosca.nodes.SoftwareComponent
+    capabilities:
+      access_address:
+        type: kubetos.capabilities.Etcd.Endpoint.Access
+      peer_address:
+        type: kubetos.capabilities.Etcd.Endpoint.Peer
+    attributes:
+      name:
+        type: string
+        default: { get_attribute: [ SELF, tosca_id ] }
+    properties:
+      component_version:
+        type: version
+        default: 3.4.13
+      backup_retention_count:
+        type: integer
+        default: -1
+      heartbeat_interval:
+        type: scalar-unit.time
+        default: 250 ms
+      election_timeout:
+        type: scalar-unit.time
+        default: 5000 ms
+      snapshot_count:
+        type: integer
+        default: 10000
+      quota_backend_bytes:
+        type: scalar-unit.size
+        default: 2147483648 B
+      max_snapshots:
+        type: integer
+        default: 0
+      max_wals:
+        type: integer
+        default: 0
+    requirements:
+      - cluster:
+          capability: tosca.capabilities.Node
+          node: kubetos.nodes.Etcd.Cluster
+          relationship: kubetos.relationships.EtcdPeer
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          etcd_version:
+            value: { concat: [ "v", { get_property: [ SELF, component_version ] } ] }
+            type: string
+        operations:
+          create:
+            implementation:
+              primary: profiles/etcd/ansible/etcd--create.yaml
+              dependencies:
+                - file: profiles/etcd/ansible/roles/etcd
+                  type: tosca.artifacts.File
+                  deploy_path: roles/etcd
+                - file: roles/download
+                  type: tosca.artifacts.File
+                  deploy_path: roles/download
+          configure:
+            inputs:
+              etcd_address: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
+              etcd_peer_port: { value: { get_property: [ SELF, peer_address, port ] }, type: integer }
+              etcd_access_address: { value: { get_attribute: [ SELF, host, private_address ] }, type: string }
+              etcd_access_port: { value: { get_property: [ SELF, access_address, port ] }, type: integer }
+              etcd_member_name: { value: { get_attribute: [ SELF, name ] }, type: string }
+              etcd_peers:
+                value: { get_attribute: [ SELF, cluster, peers ] }
+                type: list
+                entry_schema:
+                  type: kubetos.datatypes.Etcd.PeerSpec
+            implementation:
+              primary: profiles/etcd/ansible/etcd--configure.yaml
+              dependencies:
+                - file: profiles/etcd/ansible/roles/etcd
+                  type: tosca.artifacts.File
+                  deploy_path: roles/etcd
+          start:
+            implementation:
+              primary: profiles/etcd/ansible/etcd--start.yaml
+              dependencies:
+                - file: profiles/etcd/ansible/roles/etcd
+                  type: tosca.artifacts.File
+                  deploy_path: roles/etcd

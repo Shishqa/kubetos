@@ -1,0 +1,11 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Create Etcd
+      include_role:
+        name: etcd
+        tasks_from: configure

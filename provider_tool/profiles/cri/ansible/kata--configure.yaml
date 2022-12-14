@@ -1,0 +1,11 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Configure Kata
+      include_role:
+        name: kata
+        tasks_from: configure

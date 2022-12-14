@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --authentication-kubeconfig={{ kubeconfig_path }}
+    - --authorization-kubeconfig={{ kubeconfig_path }}
+    - --bind-address=0.0.0.0
+    - --config={{ config_path }}
+    - --leader-elect=true
+    - --port=0
+    image: k8s.gcr.io/kube-scheduler:{{ kube_version }}
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        path: /healthz
+        port: 10259
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-scheduler
+    resources:
+      requests:
+        cpu: 100m
+    startupProbe:
+      failureThreshold: 30
+      httpGet:
+        path: /healthz
+        port: 10259
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: {{ kubeconfig_path }}
+      name: kubeconfig
+      readOnly: true
+    - mountPath: {{ config_path }}
+      name: kubescheduler-config
+      readOnly: true
+  hostNetwork: true
+  priorityClassName: system-node-critical
+  volumes:
+  - hostPath:
+      path: {{ kubeconfig_path }}
+      type: FileOrCreate
+    name: kubeconfig
+  - hostPath:
+      path: {{ config_path }}
+      type: FileOrCreate
+    name: kubescheduler-config
+status: {}

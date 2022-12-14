@@ -1,0 +1,20 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Make sure directories exists
+      file:
+        name: "{{ item }}"
+        state: directory
+        mode: 0640
+      loop:
+        - "{{ static_pod_path }}"
+
+    - name: Create controller manager
+      template:
+        src: kube-controller-manager.yaml.j2
+        dest: "{{ static_pod_path }}/kube-controller-manager.yaml"
+        mode: 0644

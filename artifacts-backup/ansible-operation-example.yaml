@@ -1,0 +1,10 @@
+- debug:
+    msg: "SUCCESSFULL {{ test }}"
+  when: test is defined
+- fail:
+    msg: "Input is undefined"
+  when: test is undefined
+- set_fact:
+    host_attr: '0.0.0.0'
+- set_fact:
+    self_attr: 'hello!'

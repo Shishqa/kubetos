@@ -1,0 +1,25 @@
+---
+- name: install | Download kubelet
+  import_role:
+    name: download
+    tasks_from: download_file
+  vars:
+    download:
+      file: true
+      version: "{{ kubelet_version }}"
+      dest: "/tmp/releases/kubelet-{{ kubelet_version }}-{{ image_arch }}"
+      sha256: "{{ kubelet_binary_checksum }}"
+      url: "{{ kubelet_download_url }}"
+      unarchive: false
+      owner: "root"
+      mode: "0755"
+
+- name: install | Copy kubelet binary from download dir
+  copy:
+    src: "/tmp/releases/kubelet-{{ kubelet_version }}-{{ image_arch }}"
+    dest: "/usr/local/bin/kubelet"
+    mode: 0755
+    remote_src: true
+  tags:
+    - kubelet
+    - upgrade

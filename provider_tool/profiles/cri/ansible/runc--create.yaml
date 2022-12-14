@@ -1,0 +1,15 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Install runc
+      package:
+        name: runc
+        state: present
+      register: package_install
+      until: package_install is succeeded
+      retries: 4
+      delay: 3

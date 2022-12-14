@@ -1,0 +1,8 @@
+---
+- hosts: localhost
+  gather_facts: yes
+  tasks:
+
+    - name: Add item to list
+      set_fact:
+        new_list: "{{ list + [ new_item ] }}"

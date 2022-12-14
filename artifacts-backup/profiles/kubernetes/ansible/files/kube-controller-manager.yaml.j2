@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    component: kube-controller-manager
+    tier: control-plane
+  name: kube-controller-manager
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-controller-manager
+    - --allocate-node-cidrs=true
+    - --authentication-kubeconfig={{ kubeconfig_path }}
+    - --authorization-kubeconfig={{ kubeconfig_path }}
+    - --bind-address=0.0.0.0
+    - --client-ca-file={{ ca_cert_path }}
+    - --cluster-cidr={{ cluster_cidr }}
+    - --cluster-name=k8s-shishqa-test
+    - --cluster-signing-cert-file={{ ca_cert_path }}
+    - --cluster-signing-key-file={{ ca_key_path }}
+    - --configure-cloud-routes=false
+    - --controllers=*,bootstrapsigner,tokencleaner
+    - --kubeconfig={{ kubeconfig_path }}
+    - --leader-elect=true
+    - --leader-elect-lease-duration=15s
+    - --leader-elect-renew-deadline=10s
+    - --node-cidr-mask-size=24
+    - --node-monitor-grace-period=40s
+    - --node-monitor-period=5s
+    - --port=0
+    - --profiling=False
+    - --requestheader-client-ca-file={{ ca_cert_path }}
+    - --root-ca-file={{ ca_cert_path }}
+    - --service-account-private-key-file={{ sa_key_path }}
+    - --service-cluster-ip-range={{ service_cidr }}
+    - --terminated-pod-gc-threshold=12500
+    - --use-service-account-credentials=true
+    image: k8s.gcr.io/kube-controller-manager:{{ kube_version }}
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        path: /healthz
+        port: 10257
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-controller-manager
+    resources:
+      requests:
+        cpu: 200m
+    startupProbe:
+      failureThreshold: 30
+      httpGet:
+        path: /healthz
+        port: 10257
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+      name: flexvolume-dir
+    - mountPath: {{ kubeconfig_path }}
+      name: kubeconfig
+      readOnly: true
+    - mountPath: {{ ca_cert_path }}
+      name: ca-cert
+      readOnly: true
+    - mountPath: {{ ca_key_path }}
+      name: ca-key
+      readOnly: true
+    - mountPath: {{ sa_key_path }}
+      name: sa-key
+      readOnly: true
+  hostNetwork: true
+  priorityClassName: system-node-critical
+  volumes:
+  - hostPath:
+      path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+      type: DirectoryOrCreate
+    name: flexvolume-dir
+  - hostPath:
+      path: {{ kubeconfig_path }}
+      type: FileOrCreate
+    name: kubeconfig
+  - hostPath:
+      path: {{ ca_cert_path }}
+      type: FileOrCreate
+    name: ca-cert
+  - hostPath:
+      path: {{ ca_key_path }}
+      type: FileOrCreate
+    name: ca-key
+  - hostPath:
+      path: {{ sa_key_path }}
+      type: FileOrCreate
+    name: sa-key
+status: {}

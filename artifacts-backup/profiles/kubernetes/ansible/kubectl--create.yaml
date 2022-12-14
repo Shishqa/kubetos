@@ -1,0 +1,11 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Create Kubectl
+      include_role:
+        name: kubectl
+        tasks_from: create

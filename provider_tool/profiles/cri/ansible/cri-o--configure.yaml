@@ -1,0 +1,12 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+    ansible_timeout: 60
+  tasks:
+
+    - name: Configure CRI-O
+      include_role:
+        name: cri-o
+        tasks_from: configure

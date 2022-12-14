@@ -1,0 +1,19 @@
+---
+
+_host_architecture_groups:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+host_architecture: >-
+  {%- if ansible_architecture in _host_architecture_groups -%}
+  {{ _host_architecture_groups[ansible_architecture] }}
+  {%- else -%}
+  {{ ansible_architecture }}
+  {%- endif -%}
+
+cni_download_url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ host_architecture }}-{{ cni_version }}.tgz"
+
+cni_binary_checksums:
+  amd64: 5238fbb2767cbf6aae736ad97a7aa29167525dcd405196dfbc064672a730d3cf
+
+cni_binary_checksum: "{{ cni_binary_checksums[host_architecture] }}"

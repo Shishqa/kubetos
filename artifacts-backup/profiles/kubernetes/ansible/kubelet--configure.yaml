@@ -1,0 +1,11 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_become: yes
+  tasks:
+
+    - name: Create Kubelet
+      include_role:
+        name: kubelet
+        tasks_from: configure
