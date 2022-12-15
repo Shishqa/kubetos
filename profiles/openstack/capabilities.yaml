@@ -1,0 +1,6 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+capability_types:
+
+  Resource:
+    derived_from: tosca.capabilities.Root

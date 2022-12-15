@@ -1,0 +1,26 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    required_ram: 1024
+    required_vcpus: 2
+  tasks:
+
+  - name: retrieve info about flavor
+    openstack.cloud.compute_flavor_info:
+      ram: "{{ required_ram }}"
+      vcpus: "{{ required_vcpus }}" # Not filtering for some reason
+    register: result
+
+  - name: filter by vcpus
+    set_fact:
+      result: "{{ result.openstack_flavors | selectattr('vcpus', 'eq', required_vcpus) | list }}"
+
+  - debug:
+      msg: "matched flavor {{ (result | sort(attribute='disk'))[0].id }}"
+    when: result | length > 0
+
+  - fail:
+      msg: "no matching flavors"
+    when: result | length == 0

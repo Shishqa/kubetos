@@ -1,0 +1,35 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+relationship_types:
+
+  Depends:
+    derived_from: tosca.relationships.Root
+
+  ComputeToSecurityGroup:
+    derived_from: Depends
+    interfaces:
+      Configure:
+        operations:
+          pre_configure_source:
+            inputs:
+              list: 
+                value: { get_attribute: [ SOURCE, security_groups ] }
+                type: list
+                entry_schema:
+                  type: string
+              new_item:
+                value: { get_property: [ TARGET, name ] }
+                type: string
+            outputs:
+              new_list: [ SOURCE, security_groups ]
+            implementation: artifacts/add_to_list.yaml
+
+  FloatingIpToCompute:
+    derived_from: Depends
+    interfaces:
+      Configure:
+        operations:
+          pre_configure_source:
+            # same with passing [ TARGET, endpoint, ip_address ]
+            # and output is [ SOURCE, networks ] with new ip
+            implementation: artifacts/add_to_list.yaml

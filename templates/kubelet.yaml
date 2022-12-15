@@ -1,0 +1,210 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+metadata:
+  template_name: "kubetos"
+  template_author: "shishqa"
+  template_version: "1.0"
+
+imports:
+  - ../profiles/etcd/main.yaml
+  - ../profiles/cri/main.yaml
+  - ../profiles/cni/main.yaml
+  - ../profiles/kubernetes/main.yaml
+
+
+topology_template:
+
+  #  substitution_mappings:
+  #    node_type: tosca.nodes.Compute
+  #    capabilities:
+  #      host: [ os_flavor, compute ]
+  #      os: [ os_image, os ]
+  #      endpoint: [ os_server, private_endpoint ]
+  #      scalable: [ os_server, scalable ]
+  #      binding: [ os_server, binding ]
+  #    properties:
+  #
+  #    attributes:
+  #      private_address: [ os_server, private_address ]
+  #      public_address: [ os_server, public_address ]
+  #      networks: [ os_server, networks ]
+  #      ports: [ os_server, ports ]
+  #    requirements:
+  #      host: [  ]
+
+
+  inputs:
+
+    kubernetes_version:
+      type: version
+      default: 1.21.0
+
+    cluster_name:
+      type: string
+      default: kubernetes-cluster
+
+    pod_cidr:
+      type: string
+      default: 10.233.0.0/16
+
+    service_cidr:
+      type: string
+      default: 10.32.0.0/16
+
+    dns_ip:
+      type: string
+      default: 10.32.0.3
+
+  node_templates:
+
+    kubelet:
+      type: kubetos.nodes.Kubelet
+      capabilities:
+        kubelet:
+          properties:
+            static_pod_path: /etc/kubernetes/manifests
+      properties:
+        component_version: { get_input: [ kubernetes_version ] }
+        pod_cidr: { get_input: [ pod_cidr ] }
+      attributes:
+        dns_ip: { get_input: [ dns_ip ] }
+        kubeconfig_path: { get_property: [ kubelet_kubeconfig_hosted, path ] }
+        cert_path: { get_property: [ kubelet_cert_hosted, cert_path ] }
+        key_path: { get_property: [ kubelet_cert_hosted, key_path ] }
+        ca_cert_path: { get_property: [ ca_hosted, cert_path ] }
+      requirements:
+        - host: compute
+        - cri_runtime:
+            node: crio
+            relationship: kubelet_runtime
+        - kubeconfig:
+            node: kubelet_kubeconfig
+            relationship: kubelet_kubeconfig_hosted
+        - ca:
+            node: kubernetes_ca
+            relationship: ca_hosted
+        - cert:
+            node: kubelet_cert
+            relationship: kubelet_cert_hosted
+
+    kubelet_user:
+      type: kubetos.nodes.Kubernetes.User
+      capabilities:
+        user:
+          properties:
+            name: default-auth
+      requirements:
+        - cert: kubelet_cert
+
+    kubelet_kubeconfig:
+      type: kubetos.nodes.Kubeconfig
+      requirements:
+        - cluster: kube_cluster
+        - user: kubelet_user
+
+    kubelet_cert:
+      type: kubetos.nodes.Certificate
+      properties:
+        common_name: { concat: [ "system:node:", { get_property: [ SELF, dependency, name ] } ] }
+        organisation: system:nodes
+        hostnames:
+          - { get_property: [ SELF, dependency, name ] }
+          - { get_attribute: [ SELF, dependency, private_address ] }
+          - { get_attribute: [ SELF, dependency, public_address ] }
+          - 127.0.0.1
+      requirements:
+        - ca: kubernetes_ca
+        - dependency: compute
+
+    crictl:
+      type: kubetos.nodes.Crictl
+      properties:
+        component_version: { get_input: [ kubernetes_version ] }
+      requirements:
+        - host: compute
+        - cri_runtime: crio
+
+    crio:
+      type: kubetos.nodes.CRI-O
+      capabilities:
+        cri:
+          properties:
+            url_path: /var/run/crio/crio.sock
+      requirements:
+        - host: compute
+        - oci_runtime: runc
+        - oci_runtime: kata
+        - cni: cni
+
+    runc:
+      type: kubetos.nodes.Runc
+      capabilities:
+        oci:
+          properties:
+            spec:
+              name: runc
+              path: /usr/sbin/runc
+              root: /run/runc
+      requirements:
+        - host: compute
+
+    kata:
+      type: kubetos.nodes.Kata
+      capabilities:
+        oci:
+          properties:
+            spec:
+              name: kata
+              path: /opt/kata/bin/kata-runtime
+              root: /run/kata-containers
+      requirements:
+        - host: compute
+
+    cni:
+      type: kubetos.nodes.CNI
+      capabilities:
+        cni:
+          properties:
+            binary_dir: /opt/cni/bin
+            config_dir: /etc/cni/net.d
+      requirements:
+        - host: compute
+
+    compute:
+      type: tosca.nodes.Compute
+      directives:
+        - select
+
+    kubernetes_ca:
+      type: kubetos.nodes.CertificateAuthority
+      directives:
+        - select
+
+    kube_cluster:
+      type: kubetos.nodes.Kubernetes.Cluster
+      directives:
+        - select
+
+  relationship_templates:
+
+    kubelet_runtime:
+      type: kubetos.relationships.Kubelet.UsesRuntime
+      properties:
+        dns_ip: { get_input: [ dns_ip ] }
+
+    ca_hosted:
+      type: kubetos.relationships.UsesCertificate
+      properties:
+        cert_path: /etc/kubernetes/pki/ca.crt
+        key_path: /etc/kubernetes/pki/ca.pem
+
+    kubelet_cert_hosted:
+      type: kubetos.relationships.UsesCertificate
+      properties:
+        cert_path: /etc/kubernetes/pki/kubelet.crt
+        key_path: /etc/kubernetes/pki/kubelet.key
+
+    kubelet_kubeconfig_hosted:
+      type: kubetos.relationships.UsesKubeconfig
+      properties:
+        path: /etc/kubernetes/kubelet.conf

@@ -1,0 +1,55 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+metadata:
+  template_name: "cni-basic"
+  template_author: "shishqa"
+  template_version: "1.0"
+
+imports:
+  - profiles/cni/main.yaml
+
+topology_template:
+
+  inputs:
+
+    kubernetes_version:
+      type: version
+      default: 1.21.0
+
+    cluster_name:
+      type: string
+      default: kubernetes-cluster
+
+    pod_cidr:
+      type: string
+      default: 10.233.0.0/16
+
+    service_cidr:
+      type: string
+      default: 10.32.0.0/16
+
+    dns_ip:
+      type: string
+      default: 10.32.0.3
+
+  node_templates:
+
+    crictl:
+      type: kubetos.nodes.Crictl
+      properties:
+        component_version: { get_input: [ kubernetes_version ] }
+      requirements:
+        - host: compute
+        - cri_runtime: crio
+
+    crio:
+      type: kubetos.nodes.CRI-O
+      capabilities:
+        cri:
+          properties:
+            url_path: /var/run/crio/crio.sock
+      requirements:
+        - host: compute
+        - oci_runtime: runc
+        - oci_runtime: kata
+        - cni: cni

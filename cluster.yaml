@@ -579,6 +579,25 @@ topology_template:
         - host: compute
 
     compute:
+      type: tosca.nodes.Compute
+      capabilities:
+        host:
+          properties:
+            num_cpus: 2
+            disk_size: 50 GiB
+            mem_size: 4 GiB
+        endpoint:
+          properties:
+            network_name: net-for-intra-sandbox
+        os:
+          properties:
+            architecture: x86_64
+            type: ubuntu
+            version: 20.04
+      directives:
+        - substitute
+
+    compute:
       type: openstack.nodes.Compute
       properties:
         name: kubetos--control-plane

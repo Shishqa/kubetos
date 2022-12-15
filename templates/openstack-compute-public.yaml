@@ -1,0 +1,90 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+imports:
+
+- namespace_prefix: openstack
+  file: ../profiles/openstack/profile.yaml
+
+topology_template:
+
+  inputs:
+
+    instance_name:
+      type: string
+      description: Compute instance name
+
+    key_name:
+      type: string
+      description: Name of key-pair to be used for compute instance
+
+    floating_ip_pool:
+      type: string
+      description: Name of public network to get floating ip from
+
+  node_templates:
+
+    os_server:
+      type: openstack:nova.Server
+      properties:
+        name: { get_input: [ instance_name ] }
+      requirements:
+        - image: os_image
+        - flavor: os_flavor
+        - key_pair: os_key_pair
+        - security_group: os_security_group_default
+        - security_group: os_security_group_custom
+
+    os_key_pair:
+      type: openstack:nova.KeyPair
+      properties:
+        name: { get_input: [ key_name ] }
+
+    os_image:
+      type: openstack:glance.WebImage
+
+    os_flavor:
+      type: openstack:nova.Flavor
+
+    os_security_group_default:
+      type: openstack:neutron.SecurityGroup
+      properties:
+        name: default
+
+    os_floating_ip:
+      type: openstack:neutron.FloatingIp
+      properties:
+        floating_ip_pool: { get_input: [ floating_ip_pool ] }
+      requirements:
+        - nova_server: os_server
+
+    os_security_group_custom:
+      type: openstack:neutron.SecurityGroup
+      properties:
+        name:
+          concat:
+            - { get_property: [ os_server, name ] }
+            - '-security-group'
+
+    os_security_group_custom_rule_incoming_tcp_traffic:
+      type: openstack:neutron.SecurityGroupRule
+      properties:
+        direction: ingress
+        ethertype: IPv4
+        protocol: tcp
+        remote_ip_prefix: 0.0.0.0/0
+      requirements:
+        - security_group: os_security_group_custom
+
+  substitution_mappings:
+    node_type: tosca.nodes.Compute
+    capabilities:
+      host: [ os_flavor, compute ]
+      os: [ os_image, os ]
+      endpoint: [ os_server, private_endpoint ]
+      scalable: [ os_server, scalable ]
+      binding: [ os_server, binding ]
+    attributes:
+      private_address: [ os_server, private_address ]
+      public_address: [ os_server, public_address ]
+      networks: [ os_server, networks ]
+      ports: [ os_server, ports ]

@@ -1,0 +1,12 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    name: test-security-group
+  tasks:
+
+  - openstack.cloud.security_group:
+      state: present
+      name: "{{ name }}"
+      description: updated description for the {{ name }} security group

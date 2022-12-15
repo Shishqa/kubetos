@@ -1,0 +1,13 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    list: []
+    new_item: 'os_custom_security_group'
+  tasks:
+
+  - name: Add item to list
+    set_stats:
+      data:
+        new_list: "{{ list + [ new_item ] }}"
