@@ -1,0 +1,4 @@
+- name: Start Kubelet
+  include_role:
+    name: kubelet
+    tasks_from: start

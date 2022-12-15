@@ -1,0 +1,4 @@
+- name: Create CNI
+  include_role:
+    name: cni
+    tasks_from: create

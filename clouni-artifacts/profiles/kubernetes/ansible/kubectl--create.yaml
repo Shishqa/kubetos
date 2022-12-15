@@ -1,0 +1,4 @@
+- name: Create Kubectl
+  include_role:
+    name: kubectl
+    tasks_from: create

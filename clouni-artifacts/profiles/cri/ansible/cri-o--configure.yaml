@@ -1,0 +1,4 @@
+- name: Configure CRI-O
+  include_role:
+    name: cri-o
+    tasks_from: configure

@@ -1,0 +1,4 @@
+- name: Configure Kata
+  include_role:
+    name: kata
+    tasks_from: configure

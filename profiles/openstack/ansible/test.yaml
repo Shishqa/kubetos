@@ -1,0 +1,18 @@
+---
+- hosts: localhost
+  execution: local
+  gather_facts: no
+  tasks:
+
+    - name: Create instance
+      os_server:
+        state: present
+        name: "kubetos--worker"
+        image: "{{ image }}"
+        flavor: "{{ flavor }}"
+        key_name: "{{ key_name }}"
+        network: "{{ network }}"
+        boot_from_volume: false
+        security_groups: "{{ security_groups | join(',') }}"
+        auto_ip: false
+      register: server_info

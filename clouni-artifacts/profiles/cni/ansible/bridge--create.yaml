@@ -1,0 +1,5 @@
+- name: Create bridge
+  template:
+    src: bridge.conf.j2
+    dest: "{{ cni_config_dir }}/10-bridge.conf"
+    mode: 0644

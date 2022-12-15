@@ -1,0 +1,22 @@
+- name: Create cert csr
+  template:
+    src: csr.json.j2
+    dest: csr.json
+    mode: 0644
+
+- name: sign cert
+  shell:
+    cmd: cfssl gencert -initca csr.json | cfssljson -bare ca
+
+- name: get cert
+  shell: cat ca.pem
+  register: cert
+
+- name: get key
+  shell: cat ca-key.pem
+  register: key
+
+- name: return cert
+  set_fact:
+    cert: "{{ cert.stdout }}"
+    key: "{{ key.stdout }}"

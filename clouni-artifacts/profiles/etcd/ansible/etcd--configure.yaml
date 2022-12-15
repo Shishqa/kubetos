@@ -1,0 +1,4 @@
+- name: Create Etcd
+  include_role:
+    name: etcd
+    tasks_from: configure
